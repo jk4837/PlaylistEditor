@@ -1,0 +1,56 @@
+{
+	"sharedDir": "shared",
+	"dependenciesDir": "extern",
+	"info": {
+		"name": "Playlist Editor",
+		"id": "playlisteditor",
+		"version": "0.1.0",
+		"url": null,
+		"additionalData": {
+			"overrideSoName": "libplaylisteditor.so"
+		}
+	},
+	"dependencies": [
+		{
+			"id": "beatsaber-hook",
+			"versionRange": "=3.6.8",
+			"additionalData": {
+				"extraFiles": [
+					"src/inline-hook"
+				]
+			}
+		},
+		{
+			"id": "modloader",
+			"versionRange": "=1.2.3",
+			"additionalData": {
+
+			}
+		},
+		{
+			"id": "codegen",
+			"versionRange": "=0.21.0",
+			"additionalData": {
+
+			}
+		},
+		{
+		  "id": "custom-types",
+		  "versionRange": "=0.15.8",
+		  "additionalData": {}
+		},
+		{
+		  "id": "songloader",
+		  "versionRange": "0.9.2",
+		  "additionalData": {}
+		},
+		{
+		  "id": "playlistmanager",
+		  "versionRange": "0.2.2",
+		  "additionalData": {}
+		}
+	],
+	"additionalData": {
+
+	}
+}
