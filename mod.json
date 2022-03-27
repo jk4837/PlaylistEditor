@@ -14,5 +14,30 @@
 	"libraryFiles": [
 		"libbeatsaber-hook_3_6_8.so"
 	],
-	"fileCopies": []
+	"fileCopies": [
+	  {
+		"name": "DeleteIcon.png",
+		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/DeleteIcon.png"
+	  },
+	  {
+		"name": "InsertIcon.png",
+		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/InsertIcon.png"
+	  },
+	  {
+		"name": "MoveUpIcon.png",
+		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/MoveUpIcon.png"
+	  },
+	  {
+		"name": "MoveDownIcon.png",
+		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/MoveDownIcon.png"
+	  },
+	  {
+		"name": "RemoveIcon.png",
+		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/RemoveIcon.png"
+	  },
+	  {
+		"name": "DeleteAndRemoveIcon.png",
+		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/DeleteAndRemoveIcon.png"
+	  }
+	]
 }

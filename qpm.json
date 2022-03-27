@@ -48,6 +48,11 @@
 		  "id": "playlistmanager",
 		  "versionRange": "0.2.2",
 		  "additionalData": {}
+		},
+		{
+		  "id": "questui",
+		  "versionRange": "^0.13.4",
+		  "additionalData": {}
 		}
 	],
 	"additionalData": {

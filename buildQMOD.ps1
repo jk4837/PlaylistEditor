@@ -56,6 +56,12 @@ foreach ($lib in $modJson.libraryFiles)
     $filelist += $path
 }
 
+foreach ($file in $modJson.fileCopies)
+{
+    $path = "./ExtraFiles/Icons/" + $file.name
+    $filelist += $path
+}
+
 $zip = $qmodName + ".zip"
 $qmod = $qmodName + ".qmod"
 

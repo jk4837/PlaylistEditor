@@ -54,6 +54,13 @@ if ($useDebug -eq $true) {
 
 & adb push build/$fileName /sdcard/Android/data/com.beatgames.beatsaber/files/mods/$fileName
 
+& adb push ExtraFiles/Icons/DeleteIcon.png /sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/DeleteIcon.png
+& adb push ExtraFiles/Icons/InsertIcon.png /sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/InsertIcon.png
+& adb push ExtraFiles/Icons/MoveUpIcon.png /sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/MoveUpIcon.png
+& adb push ExtraFiles/Icons/MoveDownIcon.png /sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/MoveDownIcon.png
+& adb push ExtraFiles/Icons/RemoveIcon.png /sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/RemoveIcon.png
+& adb push ExtraFiles/Icons/DeleteAndRemoveIcon.png /sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/DeleteAndRemoveIcon.png
+
 & $PSScriptRoot/restart-game.ps1
 
 if ($log -eq $true) { & $PSScriptRoot/start-logging.ps1 -self:$self -all:$all -custom:$custom -file:$file }

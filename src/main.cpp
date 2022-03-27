@@ -1,3 +1,4 @@
+#include <map>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,15 +6,29 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <fstream>
 
 
 #include "TMPro/TextMeshProUGUI.hpp"
 #include "UnityEngine/Events/UnityAction.hpp"
+#include "UnityEngine/Object.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Transform.hpp"
+#include "UnityEngine/Material.hpp"
+#include "UnityEngine/Texture2D.hpp"
+#include "UnityEngine/TextureWrapMode.hpp"
+#include "UnityEngine/SpriteMeshType.hpp"
+#include "UnityEngine/ImageConversion.hpp"
 #include "UnityEngine/UI/Button.hpp"
 #include "UnityEngine/UI/Button_ButtonClickedEvent.hpp"
+#include "UnityEngine/UI/ContentSizeFitter.hpp"
+#include "UnityEngine/UI/LayoutElement.hpp"
+#include "UnityEngine/UI/LayoutGroup.hpp"
+#include "UnityEngine/UI/Image.hpp"
+#include "questui/shared/BeatSaberUI.hpp"
+#include "questui/shared/CustomTypes/Components/ExternalComponents.hpp"
+#include "codegen/include/HMUI/HoverHintController.hpp"
 #include "codegen/include/HMUI/ViewController_AnimationDirection.hpp"
 #include "codegen/include/HMUI/ScrollView.hpp"
 #include "codegen/include/HMUI/TableView.hpp"
@@ -342,10 +357,100 @@ std::function<void()> getDeleteFunction() {
     return deleteFunction;
 }
 
-UnityEngine::UI::Button::ButtonClickedEvent* createDeleteOnClick() {
-    auto onClick = UnityEngine::UI::Button::ButtonClickedEvent::New_ctor();
-    onClick->AddListener(il2cpp_utils::MakeDelegate<UnityEngine::Events::UnityAction*>(classof(UnityEngine::Events::UnityAction*), getDeleteFunction()));
-    return onClick;
+#define MakeDelegate(DelegateType, varName) (il2cpp_utils::MakeDelegate<DelegateType>(classof(DelegateType), varName))
+
+UnityEngine::UI::Button* CreateBaseButton(std::string_view name, UnityEngine::Transform* parent, std::string_view buttonTemplate)
+{
+    Il2CppString* templCS = il2cpp_utils::newcsstr(buttonTemplate.data());
+    auto btn = UnityEngine::Object::Instantiate((UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::UI::Button*>()).Last([&](UnityEngine::UI::Button* x) {
+        return x->get_name()->Equals(templCS);
+    }), parent, false);
+
+    btn->set_name(il2cpp_utils::newcsstr(name.data()));
+    btn->set_interactable(true);
+    return btn;
+}
+
+void SetHoverHint(UnityEngine::Transform* button, std::string_view name, std::string_view text)
+{
+    auto hover = button->get_gameObject()->AddComponent<HMUI::HoverHint*>();
+    hover->set_text(text);
+    hover->set_name(name);
+    hover->dyn__hoverHintController() = UnityEngine::Resources::FindObjectsOfTypeAll<HMUI::HoverHintController*>().First();
+}
+
+UnityEngine::UI::Button* CreateIconButton(std::string_view name, UnityEngine::Transform* parent, std::string_view buttonTemplate, UnityEngine::Sprite* icon, std::string_view hint)
+{
+    auto btn = CreateBaseButton(name, parent, buttonTemplate);
+
+    SetHoverHint(btn->get_transform(), string_format("%s_hoverHintText", name.data()), hint);
+    btn->get_gameObject()->AddComponent<QuestUI::ExternalComponents*>()->Add(
+        btn->GetComponentsInChildren<UnityEngine::UI::LayoutGroup*>().First([](auto x) -> bool {
+        return x->get_gameObject()->get_name()->Equals("Content");
+    }));
+
+    UnityEngine::Transform* contentTransform = btn->get_transform()->Find("Content");
+    UnityEngine::Object::Destroy(contentTransform->Find("Text")->get_gameObject());
+    UnityEngine::UI::Image* iconImage = UnityEngine::GameObject::New_ctor("Icon")->AddComponent<HMUI::ImageView*>();
+    // idk what mat that is
+
+    auto orig = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::UI::Button*>().Last([&](UnityEngine::UI::Button* x) {
+        return x->get_name()->Equals(buttonTemplate.data());
+    });
+
+    iconImage->set_material(orig->get_gameObject()->GetComponentInChildren<HMUI::ImageView*>()->get_material());
+    iconImage->get_rectTransform()->SetParent(contentTransform, false);
+    iconImage->get_rectTransform()->set_sizeDelta(UnityEngine::Vector2(10.0f, 10.0f));
+    iconImage->set_sprite(icon);
+    iconImage->set_preserveAspect(true);
+
+    if (iconImage)
+    {
+        // auto btnIcon = btn->get_gameObject()->AddComponent<SongBrowser::Components::ButtonIconImage*>();
+        // btnIcon->image = iconImage;
+
+    }
+
+    UnityEngine::Object::Destroy(btn->get_transform()->Find("Content")->GetComponent<UnityEngine::UI::LayoutElement*>());
+    btn->GetComponentsInChildren<UnityEngine::RectTransform*>().First([](auto x) -> bool {
+        return x->get_name()->Equals("Underline");
+    })->get_gameObject()->SetActive(false);
+
+    auto buttonSizeFitter = btn->get_gameObject()->AddComponent<UnityEngine::UI::ContentSizeFitter*>();
+    buttonSizeFitter->set_verticalFit(UnityEngine::UI::ContentSizeFitter::FitMode::Unconstrained);
+    buttonSizeFitter->set_horizontalFit(UnityEngine::UI::ContentSizeFitter::FitMode::Unconstrained);
+
+    btn->set_onClick(UnityEngine::UI::Button::ButtonClickedEvent::New_ctor());
+    return btn;
+}
+
+UnityEngine::UI::Button* CreateIconButton(std::string_view name, UnityEngine::Transform* parent, std::string_view buttonTemplate, UnityEngine::Vector2 anchoredPosition, UnityEngine::Vector2 sizeDelta, std::function<void(void)> onClick, UnityEngine::Sprite* icon, std::string_view hint)
+{
+    auto btn = CreateIconButton(name, parent, buttonTemplate, icon, hint);
+    auto rect = reinterpret_cast<UnityEngine::RectTransform*>(btn->get_transform());
+    rect->set_anchorMin(UnityEngine::Vector2(0.5f, 0.5f));
+    rect->set_anchorMax(UnityEngine::Vector2(0.5f, 0.5f));
+    rect->set_anchoredPosition(anchoredPosition);
+    rect->set_sizeDelta(sizeDelta);
+
+    if (onClick)
+        btn->get_onClick()->AddListener(MakeDelegate(UnityEngine::Events::UnityAction*, onClick));
+
+    return btn;
+}
+
+static UnityEngine::Sprite* FileToSprite(const std::string_view &image_name)
+{
+    std::string path = string_format("/sdcard/ModData/com.beatgames.beatsaber/Mods/%s/Icons/%s.png", modInfo.id.c_str(),image_name.data());
+    std::ifstream instream(path, std::ios::in | std::ios::binary);
+    std::vector<uint8_t> data((std::istreambuf_iterator<char>(instream)), std::istreambuf_iterator<char>());
+    Array<uint8_t>* bytes = il2cpp_utils::vectorToArray(data);
+    UnityEngine::Texture2D* texture = UnityEngine::Texture2D::New_ctor(0, 0, UnityEngine::TextureFormat::RGBA32, false, false);
+    if (UnityEngine::ImageConversion::LoadImage(texture, bytes, false)) {
+        texture->set_wrapMode(UnityEngine::TextureWrapMode::Clamp);
+        return UnityEngine::Sprite::Create(texture, UnityEngine::Rect(0.0f, 0.0f, (float)texture->get_width(), (float)texture->get_height()), UnityEngine::Vector2(0.5f,0.5f), 100.0f, 1u, UnityEngine::SpriteMeshType::Tight, UnityEngine::Vector4(0.0f, 0.0f, 0.0f, 0.0f), false);
+    }
+    return nullptr;
 }
 
 static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
@@ -356,16 +461,48 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
         getLogger().log(Logging::INFO, "SetOnClick level delete button, id: %u", deleteButtonTransform->GetInstanceID());
         deleteButton = deleteButtonTransform->get_gameObject()->GetComponent<UnityEngine::UI::Button*>();
 
-        auto comps = deleteButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>();
-        for (size_t i = 0; i < comps.Length(); i++)
-        {
-            if ("Icon" == comps[i]->get_name()) {
-                deleteButtonImageView = comps[i];
-                break;
-            }
+        auto comps = deleteButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
+            return "Icon" == x->get_name();
+        });
+        if (comps) {
+            deleteButtonImageView = comps;
         }
+        deleteButton->set_onClick(UnityEngine::UI::Button::ButtonClickedEvent::New_ctor());
+        deleteButton->get_onClick()->AddListener(MakeDelegate(UnityEngine::Events::UnityAction*, getDeleteFunction()));
 
-        deleteButton->set_onClick(createDeleteOnClick());
+        auto posX = -22.5f;
+        auto deleteAndRemoveButton = CreateIconButton("DeleteAndRemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(20.0f,7.0f), getDeleteFunction(),
+                                             FileToSprite("DeleteAndRemoveIcon"), "Delete and Remove Song from List");
+        deleteAndRemoveButton->get_transform()->SetAsLastSibling();
+
+        posX += 15.0f + 1.25f ;
+        auto removeButton = CreateIconButton("RemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                //     OnClearButtonClickEvent();
+            }, FileToSprite("RemoveIcon"), "Remove Song from List");
+        removeButton->get_transform()->SetAsLastSibling();
+
+        posX += 10.0f + 1.25f;
+        auto insertButton = CreateIconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                //     OnClearButtonClickEvent();
+            }, FileToSprite("InsertIcon"), "Insert to List");
+        insertButton->get_transform()->SetAsLastSibling();
+
+        posX += 10.0f + 1.25f;
+        auto moveUpButton = CreateIconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                //     OnClearButtonClickEvent();
+            }, FileToSprite("MoveUpIcon"), "Move Up Song from List");
+        moveUpButton->get_transform()->SetAsLastSibling();
+
+        posX += 10.0f + 1.25f;
+        auto moveDownButton = CreateIconButton("MoveDownFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                //     OnClearButtonClickEvent();
+            }, FileToSprite("MoveDownIcon"), "Move Down Song from List");
+        moveDownButton->get_transform()->SetAsLastSibling();
     }
 }
 
