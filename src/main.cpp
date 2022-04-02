@@ -56,6 +56,7 @@
 #include "GlobalNamespace/StandardLevelDetailViewController.hpp"
 
 #include "main.hpp"
+#include "logging.hpp"
 
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
 // static CustomPreviewBeatmapLevel *selectedlevel = nullptr;
@@ -82,12 +83,6 @@ Configuration& getConfig() {
     static Configuration config(modInfo);
     config.Load();
     return config;
-}
-
-// Returns a logger, useful for printing debug messages
-Logger& getLogger() {
-    static Logger* logger = new Logger(modInfo);
-    return *logger;
 }
 
 template <class T>
@@ -120,7 +115,7 @@ static void RefreshAndStayList(const LIST_ACTION act) {
 
     RuntimeSongLoader::API::RefreshSongs(true,
     [lastScrollPos, nextSelectedRow, lastCollectionIdx] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
-        getLogger().log(Logging::INFO, "Success refresh song");
+        INFO("Success refresh song");
 
         // select level collection
         AnnotatedBeatmapLevelCollectionsViewController->SetData(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections(), lastCollectionIdx, false);
@@ -198,9 +193,9 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
             }
         }
         if (!found)
-            getLogger().log(Logging::ERROR, "Failed to find %s in playlist dir %s, count: %u", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str(), songs.Size());
+            ERROR("Failed to find %s in playlist dir %s, count: %u", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str(), songs.Size());
         else {
-            getLogger().log(Logging::INFO, "%u %u", songs.Size(), document.GetObject()["songs"].Size());
+            INFO("%u %u", songs.Size(), document.GetObject()["songs"].Size());
             if (document.GetObject()["songs"].Size() == 0)
                 throw std::invalid_argument("some thing wrong");
 
@@ -213,7 +208,7 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
             success = true;
         }
     } catch (const std::exception &e) {
-        getLogger().log(Logging::ERROR, "Error loading playlist %s: %s", path.data(), e.what());
+        ERROR("Error loading playlist %s: %s", path.data(), e.what());
     }
     return success;
 }
@@ -224,13 +219,13 @@ std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh
     if (fullRefresh)
         playlists.clear();
     if (!playlists.contains(listID)) {
-        getLogger().log(Logging::INFO, "Don't have playlist %s, reload all", std::string(listID).c_str());
+        INFO("Don't have playlist %s, reload all", std::string(listID).c_str());
         playlists.clear();
         const std::string CustomLevelPackPrefixID = "custom_levelPack_";
         const std::string playlistPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/PlaylistManager/Playlists";
 
         if(!std::filesystem::is_directory(playlistPath)) {
-            getLogger().log(Logging::INFO, "Don't have playlist dir %s", playlistPath.c_str());
+            INFO("Don't have playlist dir %s", playlistPath.c_str());
             return "";
         }
         for (const auto& entry : std::filesystem::directory_iterator(playlistPath)) {
@@ -240,13 +235,13 @@ std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh
                 if(listOpt.has_value()) {
                     auto list = listOpt.value();
                     playlists[CustomLevelPackPrefixID + list.GetPlaylistTitle()] = path;
-                    getLogger().log(Logging::INFO, "LoadPlaylists %s : %s", list.GetPlaylistTitle().c_str(), path.c_str());
+                    INFO("LoadPlaylists %s : %s", list.GetPlaylistTitle().c_str(), path.c_str());
                 }
             }
         }
     }
     if (!playlists.contains(listID)) {
-        getLogger().log(Logging::INFO, "Failed to find playlist of %s", std::string(listID).c_str());
+        INFO("Failed to find playlist of %s", std::string(listID).c_str());
         return "";
     }
     return playlists[listID];
@@ -328,12 +323,12 @@ static void SelectLevelCollection(const int lastCollectionIdx, const ::StringW &
         auto collection = GetLevelCollectionByName(levelCollectionName);
         if (!collection)
         {
-            getLogger().log(Logging::INFO, "Could not locate requested level collection...");
+            INFO("Could not locate requested level collection...");
             return;
         }
 
-        getLogger().log(Logging::INFO, "Selecting level collection: %s", std::string(levelCollectionName).c_str());
-        // getLogger().log(Logging::INFO, "1 Selecting level collection: %s", std::string(levelCollectionName).c_str());
+        INFO("Selecting level collection: %s", std::string(levelCollectionName).c_str());
+        // INFO("1 Selecting level collection: %s", std::string(levelCollectionName).c_str());
 
         /* no need
         LevelFilteringNavigationController->SelectAnnotatedBeatmapLevelCollection(reinterpret_cast<GlobalNamespace::IBeatmapLevelPack*>(collection));
@@ -351,16 +346,16 @@ static void SelectLevelCollection(const int lastCollectionIdx, const ::StringW &
         // AnnotatedBeatmapLevelCollectionsViewController->HandleDidSelectAnnotatedBeatmapLevelCollection(collection);
 
 
-        getLogger().log(Logging::INFO, "2 Selecting level collection: %s", std::string(levelCollectionName).c_str());
+        INFO("2 Selecting level collection: %s", std::string(levelCollectionName).c_str());
         // make table to be specific play list
         // LevelFilteringNavigationController->HandleAnnotatedBeatmapLevelCollectionsViewControllerDidSelectAnnotatedBeatmapLevelCollection(collection);
 
 
-        getLogger().log(Logging::INFO, "Done selecting level collection!");
+        INFO("Done selecting level collection!");
     }
     catch (const std::exception& e)
     {
-        getLogger().log(Logging::ERROR, "Failed to select level collection, err: %s", e.what());
+        ERROR("Failed to select level collection, err: %s", e.what());
     }
 }
 
@@ -369,50 +364,50 @@ MAKE_HOOK_MATCH(FlowCoordinator_PresentFlowCoordinator, &HMUI::FlowCoordinator::
     FlowCoordinator_PresentFlowCoordinator(self, flowCoordinator, finishedCallback, animationDirection, immediately, replaceTopViewController);
     if (il2cpp_utils::try_cast<GlobalNamespace::SoloFreePlayFlowCoordinator>(flowCoordinator))
     {
-        getLogger().log(Logging::INFO, "Initializing PlayListEditor for Single Player Mode");
+        INFO("Initializing PlayListEditor for Single Player Mode");
         LevelSelectionFlowCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::SoloFreePlayFlowCoordinator *>().Last();
         // gather flow coordinator elements
         LevelSelectionNavigationController = LevelSelectionFlowCoordinator->dyn_levelSelectionNavigationController();
-        getLogger().log(Logging::INFO, "Acquired LevelSelectionNavigationController [%d]", LevelSelectionNavigationController->GetInstanceID());
+        INFO("Acquired LevelSelectionNavigationController [%d]", LevelSelectionNavigationController->GetInstanceID());
 
         LevelFilteringNavigationController = LevelSelectionNavigationController->dyn__levelFilteringNavigationController();
-        getLogger().log(Logging::INFO, "Acquired LevelFilteringNavigationController [%d]", LevelFilteringNavigationController->GetInstanceID());
+        INFO("Acquired LevelFilteringNavigationController [%d]", LevelFilteringNavigationController->GetInstanceID());
 
         LevelCollectionNavigationController = LevelSelectionNavigationController->dyn__levelCollectionNavigationController();
-        getLogger().log(Logging::INFO, "Acquired LevelCollectionNavigationController [%d]", LevelCollectionNavigationController->GetInstanceID());
+        INFO("Acquired LevelCollectionNavigationController [%d]", LevelCollectionNavigationController->GetInstanceID());
 
         LevelCollectionViewController = LevelCollectionNavigationController->dyn__levelCollectionViewController();
-        getLogger().log(Logging::INFO, "Acquired LevelCollectionViewController [%d]", LevelCollectionViewController->GetInstanceID());
+        INFO("Acquired LevelCollectionViewController [%d]", LevelCollectionViewController->GetInstanceID());
 
         LevelDetailViewController = LevelCollectionNavigationController->dyn__levelDetailViewController();
-        getLogger().log(Logging::INFO, "Acquired LevelDetailViewController [%d]", LevelDetailViewController->GetInstanceID());
+        INFO("Acquired LevelDetailViewController [%d]", LevelDetailViewController->GetInstanceID());
 
         LevelCollectionTableView = LevelCollectionViewController->dyn__levelCollectionTableView();
-        getLogger().log(Logging::INFO, "Acquired LevelPackLevelsTableView [%d]", LevelCollectionTableView->GetInstanceID());
+        INFO("Acquired LevelPackLevelsTableView [%d]", LevelCollectionTableView->GetInstanceID());
 
         StandardLevelDetailView = LevelDetailViewController->dyn__standardLevelDetailView();
-        getLogger().log(Logging::INFO, "Acquired StandardLevelDetailView [%d]", StandardLevelDetailView->GetInstanceID());
+        INFO("Acquired StandardLevelDetailView [%d]", StandardLevelDetailView->GetInstanceID());
 
         BeatmapCharacteristicSelectionViewController = StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController();
-        getLogger().log(Logging::INFO, "Acquired BeatmapCharacteristicSegmentedControlController [%d]", BeatmapCharacteristicSelectionViewController->GetInstanceID());
+        INFO("Acquired BeatmapCharacteristicSegmentedControlController [%d]", BeatmapCharacteristicSelectionViewController->GetInstanceID());
 
         LevelDifficultyViewController = StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController();
-        getLogger().log(Logging::INFO, "Acquired BeatmapDifficultySegmentedControlController [%d]", LevelDifficultyViewController->GetInstanceID());
+        INFO("Acquired BeatmapDifficultySegmentedControlController [%d]", LevelDifficultyViewController->GetInstanceID());
 
         AnnotatedBeatmapLevelCollectionsViewController = LevelFilteringNavigationController->dyn__annotatedBeatmapLevelCollectionsViewController();
-        getLogger().log(Logging::INFO, "Acquired AnnotatedBeatmapLevelCollectionsViewController from LevelFilteringNavigationController [%d]", AnnotatedBeatmapLevelCollectionsViewController->GetInstanceID());
+        INFO("Acquired AnnotatedBeatmapLevelCollectionsViewController from LevelFilteringNavigationController [%d]", AnnotatedBeatmapLevelCollectionsViewController->GetInstanceID());
 
         LevelCategoryViewController = LevelFilteringNavigationController->dyn__selectLevelCategoryViewController();
-        getLogger().log(Logging::INFO, "Acquired LevelCategoryViewController from LevelFilteringNavigationController [%d]", LevelCategoryViewController->GetInstanceID());
+        INFO("Acquired LevelCategoryViewController from LevelFilteringNavigationController [%d]", LevelCategoryViewController->GetInstanceID());
 
         BeatmapLevelsModel = LevelFilteringNavigationController->dyn__beatmapLevelsModel();
-        getLogger().log(Logging::INFO, "Acquired BeatmapLevelsModel [%d]", BeatmapLevelsModel->GetInstanceID());
+        INFO("Acquired BeatmapLevelsModel [%d]", BeatmapLevelsModel->GetInstanceID());
     }
 }
 
 template <class T>
 static void listAllName(UnityEngine::Transform *parent, const std::string &prefix = "") {
-    getLogger().log(Logging::INFO, "%s #p: tag: %s, name: %s, id: %u", prefix.c_str(), std::string(parent->get_tag()).c_str(), std::string(parent->get_name()).c_str(), parent->GetInstanceID());
+    INFO("%s #p: tag: %s, name: %s, id: %u", prefix.c_str(), std::string(parent->get_tag()).c_str(), std::string(parent->get_name()).c_str(), parent->GetInstanceID());
     auto childs = parent->GetComponentsInChildren<T *>();
     // auto childs = parent->GetComponentsInChildren<UnityEngine::Transform *>();
     // auto childs = parent->GetComponentsInChildren<TMPro::TextMeshProUGUI *>();
@@ -422,7 +417,7 @@ static void listAllName(UnityEngine::Transform *parent, const std::string &prefi
     {
         if (parent->GetInstanceID() == childs.get(i)->GetInstanceID())
             continue;
-        getLogger().log(Logging::INFO, "%s #%zu: tag: %s, name: %s, id: %u", prefix.c_str(), i, std::string(childs.get(i)->get_tag()).c_str(), std::string(childs.get(i)->get_name()).c_str(), childs.get(i)->GetInstanceID());
+        INFO("%s #%zu: tag: %s, name: %s, id: %u", prefix.c_str(), i, std::string(childs.get(i)->get_tag()).c_str(), std::string(childs.get(i)->get_name()).c_str(), childs.get(i)->GetInstanceID());
         // for class == ImageView
         // childs.get(i)->set_color(UnityEngine::Color::get_red());
         // childs.get(i)->set_color0(UnityEngine::Color::get_red());
@@ -438,7 +433,7 @@ static void inActiveLevelDeleteButton(UnityEngine::Transform *parent) {
     auto deleteButtonTransform = parent->FindChild(deleteLevelButtonName);
 
     if (deleteButtonTransform) {
-        getLogger().log(Logging::INFO, "Inactive level delete button, id: %u", deleteButtonTransform->GetInstanceID());
+        INFO("Inactive level delete button, id: %u", deleteButtonTransform->GetInstanceID());
         deleteButtonTransform->get_gameObject()->SetActive(false);
     }
 }
@@ -448,11 +443,11 @@ static void logPacks(::StringW lastCollectionName = "") {
     for (int j = 0; j < packArr.Length(); j++)
     {
         auto tmp = listToArrayW(((GlobalNamespace::IAnnotatedBeatmapLevelCollection *)(packArr.get(j)))->get_beatmapLevelCollection()->get_beatmapLevels());
-        getLogger().log(Logging::INFO, "pack #%d %s has %lu", j, std::string(packArr.get(j)->get_packName()).c_str(), tmp.Length());
+        INFO("pack #%d %s has %lu", j, std::string(packArr.get(j)->get_packName()).c_str(), tmp.Length());
         // if (!packArr.get(j)->get_packName()->Equals(lastCollectionName))
         //     continue;
         // for (int i = 0; i < tmp.Length(); i++)
-        //     getLogger().log(Logging::INFO, "    pack #%d %s", i, std::string(tmp[i]->get_songName()).c_str());
+        //     INFO("    pack #%d %s", i, std::string(tmp[i]->get_songName()).c_str());
     }
 }
 
@@ -557,14 +552,14 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
         auto deleteButtonTransform = parent->FindChild("DeleteLevelButton");
         if (!deleteButtonTransform)
             return;
-        getLogger().log(Logging::INFO, "SetOnClick level delete button, id: %u", deleteButtonTransform->GetInstanceID());
+        INFO("SetOnClick level delete button, id: %u", deleteButtonTransform->GetInstanceID());
         deleteButton = deleteButtonTransform->get_gameObject()->GetComponent<UnityEngine::UI::Button*>();
         deleteButtonImageView = deleteButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
             return "Icon" == x->get_name();
         });
         std::function<void()> deleteFunction = (std::function<void()>) [] () {
             if (!deleteButtonImageView) {
-                getLogger().log(Logging::INFO, "Null deleteButtonImageView");
+                INFO("Null deleteButtonImageView");
                 return;
             }
             if (UnityEngine::Color::get_red() != deleteButtonImageView->get_color()) {
@@ -573,7 +568,7 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
             }
             GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
             RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [] {
-                    getLogger().log(Logging::INFO, "Success delete song");
+                    INFO("Success delete song");
                     RefreshAndStayList(LIST_ACTION::REMOVE);
                 }
             );
@@ -585,7 +580,7 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
         auto deleteAndRemoveButton = CreateIconButton("DeleteAndRemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                              UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(20.0f,7.0f), [] () {
                 if (!deleteAndRemoveButtonImageView) {
-                    getLogger().log(Logging::INFO, "Null deleteAndRemoveButtonImageView");
+                    INFO("Null deleteAndRemoveButtonImageView");
                     return;
                 }
                 if (UnityEngine::Color::get_red() != deleteAndRemoveButtonImageView->get_color()) {
@@ -594,7 +589,7 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
                 }
                 GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
                 RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [] {
-                        getLogger().log(Logging::INFO, "Success delete song");
+                        INFO("Success delete song");
                         UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::REMOVE);
                     }
                 );
@@ -658,7 +653,7 @@ extern "C" void setup(ModInfo& info) {
     modInfo = info;
 
     getConfig().Load(); // Load the config file
-    getLogger().log(Logging::INFO, "Completed setup!");
+    INFO("Completed setup!");
 }
 
 // Called later on in the game loading - a good time to install function hooks
@@ -667,17 +662,17 @@ extern "C" void load() {
 
     RuntimeSongLoader::API::AddRefreshLevelPacksEvent(
         [] (RuntimeSongLoader::SongLoaderBeatmapLevelPackCollectionSO* customBeatmapLevelPackCollectionSO) {
-            getLogger().log(Logging::INFO, "SSSSS AddSongsLoadedEvent %d", customBeatmapLevelPackCollectionSO->GetInstanceID());
+            INFO("SSSSS AddSongsLoadedEvent %d", customBeatmapLevelPackCollectionSO->GetInstanceID());
             PlaylistManager::LoadPlaylists(customBeatmapLevelPackCollectionSO, true);
             // ::ArrayW<::GlobalNamespace::IBeatmapLevelPack*> beatmapLevelPacks = (reinterpret_cast<GlobalNamespace::IBeatmapLevelPackCollection*>(customBeatmapLevelPackCollectionSO))->get_beatmapLevelPacks();
             // for (int i = 0; i < beatmapLevelPacks.Length(); i++)
-            //     getLogger().log(Logging::INFO, "SSSSS    pack #%d [%s] [%s] [%s]", i, std::string(beatmapLevelPacks[i]->get_packID()).c_str(), std::string(beatmapLevelPacks[i]->get_packName()).c_str(), std::string(beatmapLevelPacks[i]->get_shortPackName()).c_str());
+            //     INFO("SSSSS    pack #%d [%s] [%s] [%s]", i, std::string(beatmapLevelPacks[i]->get_packID()).c_str(), std::string(beatmapLevelPacks[i]->get_packName()).c_str(), std::string(beatmapLevelPacks[i]->get_shortPackName()).c_str());
         }
     );
 
-    getLogger().log(Logging::INFO, "Installing hooks...");
-    INSTALL_HOOK(getLogger(), StandardLevelDetailViewController_ShowContent);
-    INSTALL_HOOK(getLogger(), StandardLevelDetailView_RefreshContent);
-    INSTALL_HOOK(getLogger(), FlowCoordinator_PresentFlowCoordinator);
-    getLogger().log(Logging::INFO, "Installed all hooks!");
+    INFO("Installing hooks...");
+    INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), StandardLevelDetailViewController_ShowContent);
+    INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), StandardLevelDetailView_RefreshContent);
+    INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), FlowCoordinator_PresentFlowCoordinator);
+    INFO("Installed all hooks!");
 }
