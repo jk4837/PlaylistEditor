@@ -75,6 +75,7 @@ static GlobalNamespace::AnnotatedBeatmapLevelCollectionsViewController *Annotate
 
 static UnityEngine::UI::Button *deleteButton = nullptr;
 static HMUI::ImageView *deleteButtonImageView = nullptr;
+static HMUI::ImageView *deleteAndRemoveButtonImageView = nullptr;
 
 // Loads the config from disk using our modInfo, then returns it for use
 Configuration& getConfig() {
@@ -93,6 +94,164 @@ template <class T>
 constexpr ArrayW<T> listToArrayW(::System::Collections::Generic::IReadOnlyList_1<T>* list) {
     return ArrayW<T>(reinterpret_cast<Array<T>*>(list));
 }
+
+typedef enum LIST_ACTION {
+    REMOVE, INSERT, MOVE_UP, MOVE_DOWN
+} LIST_ACTION_T;
+
+static void RefreshAndStayList(const LIST_ACTION act) {
+
+    auto lastCollectionIdx = AnnotatedBeatmapLevelCollectionsViewController->dyn__selectedItemIndex();
+    auto lastScrollPos = LevelCollectionTableView->dyn__tableView()->get_scrollView()->dyn__destinationPos();
+    int selectedRow = LevelCollectionTableView->dyn__selectedRow();
+    int nextSelectedRow;
+    switch (act) {
+        case MOVE_DOWN:
+            nextSelectedRow = selectedRow + 1;
+            break;
+        case MOVE_UP:
+            nextSelectedRow = selectedRow - 1;
+            break;
+        case INSERT:
+        case REMOVE:
+            nextSelectedRow = (selectedRow < LevelCollectionTableView->NumberOfCells() - 1) ? selectedRow : LevelCollectionTableView->NumberOfCells() - 2;
+            break;
+    }
+
+    RuntimeSongLoader::API::RefreshSongs(true,
+    [lastScrollPos, nextSelectedRow, lastCollectionIdx] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
+        getLogger().log(Logging::INFO, "Success refresh song");
+
+        // select level collection
+        AnnotatedBeatmapLevelCollectionsViewController->SetData(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections(), lastCollectionIdx, false);
+
+        // select level
+        // LevelCollectionTableView->SelectLevel(nextPreviewBeatmapLevels); // this will jump to center
+        LevelCollectionTableView->dyn__tableView()->SelectCellWithIdx(nextSelectedRow, true); // select but scroll at head
+        LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(lastScrollPos, false);
+    });
+}
+
+static std::string rapidjsonToString(rapidjson::Document &document) {
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    document.Accept(writer);
+    return std::string(buffer.GetString());
+}
+
+bool UpdateFile(const std::string &path, const LIST_ACTION act) {
+    bool success = false;
+    if(!fileexists(path))
+        return false;
+    auto json = readfile(path);
+    rapidjson::Document document;
+    document.Parse(json);
+    try {
+        if (document.HasParseError())
+            throw std::invalid_argument("parsing error");
+        if (!document.IsObject())
+            throw std::invalid_argument("root isn't object");
+        if (document.GetObject()["songs"].GetType() != rapidjson::kArrayType)
+            throw std::invalid_argument("root/songs not array");
+
+        const std::string CustomLevelPrefixID = "custom_level_";
+        rapidjson::Value tmp(rapidjson::kArrayType);
+        tmp = document.GetObject()["songs"];
+
+        rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+        document.GetObject()["songs"].SetArray();
+        bool found = false;
+        auto songs = tmp.GetArray();
+        for (rapidjson::SizeType i = 0; i < songs.Size(); i++) {
+            if (!songs[i].IsObject())
+                throw std::invalid_argument("invalid song object");
+            if (!songs[i].HasMember("hash") || !songs[i]["hash"].IsString())
+                throw std::invalid_argument("invalid hash in song object");
+
+            const std::string levelID = CustomLevelPrefixID + songs[i]["hash"].GetString();
+            if (0 == strcasecmp(levelID.c_str(), (std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str()))) {
+                found = true;
+
+                switch (act) {
+                    case INSERT:
+                        // must ur wi chu li
+                        continue;
+                    case REMOVE:
+                        continue;
+                    case MOVE_DOWN:
+                        if (i >= songs.Size() - 1) // already at bottom
+                            return false;
+                        document.GetObject()["songs"].PushBack(songs[i+1], allocator);
+                        document.GetObject()["songs"].PushBack(songs[i], allocator);
+                        i++;
+                        break;
+                    case MOVE_UP:
+                        if (i <= 0) // already at top
+                            return false;
+                        document.GetObject()["songs"].PushBack(songs[i], allocator);
+                        document.GetObject()["songs"][i].Swap(document.GetObject()["songs"][i-1]);
+                        break;
+                }
+
+            } else {
+                document.GetObject()["songs"].PushBack(songs[i], allocator);
+            }
+        }
+        if (!found)
+            getLogger().log(Logging::ERROR, "Failed to find %s in playlist dir %s, count: %u", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str(), songs.Size());
+        else {
+            getLogger().log(Logging::INFO, "%u %u", songs.Size(), document.GetObject()["songs"].Size());
+            if (document.GetObject()["songs"].Size() == 0)
+                throw std::invalid_argument("some thing wrong");
+
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            document.Accept(writer);
+            if (!writefile(path, buffer.GetString()))
+                throw std::invalid_argument("failed to write file");
+            RefreshAndStayList(act);
+            success = true;
+        }
+    } catch (const std::exception &e) {
+        getLogger().log(Logging::ERROR, "Error loading playlist %s: %s", path.data(), e.what());
+    }
+    return success;
+}
+
+
+std::map<::StringW, std::string> playlists;
+std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh = false) {
+    if (fullRefresh)
+        playlists.clear();
+    if (!playlists.contains(listID)) {
+        getLogger().log(Logging::INFO, "Don't have playlist %s, reload all", std::string(listID).c_str());
+        playlists.clear();
+        const std::string CustomLevelPackPrefixID = "custom_levelPack_";
+        const std::string playlistPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/PlaylistManager/Playlists";
+
+        if(!std::filesystem::is_directory(playlistPath)) {
+            getLogger().log(Logging::INFO, "Don't have playlist dir %s", playlistPath.c_str());
+            return "";
+        }
+        for (const auto& entry : std::filesystem::directory_iterator(playlistPath)) {
+            if(!entry.is_directory()) {
+                auto path = entry.path().string();
+                auto listOpt = PlaylistManager::ReadFromFile(path);
+                if(listOpt.has_value()) {
+                    auto list = listOpt.value();
+                    playlists[CustomLevelPackPrefixID + list.GetPlaylistTitle()] = path;
+                    getLogger().log(Logging::INFO, "LoadPlaylists %s : %s", list.GetPlaylistTitle().c_str(), path.c_str());
+                }
+            }
+        }
+    }
+    if (!playlists.contains(listID)) {
+        getLogger().log(Logging::INFO, "Failed to find playlist of %s", std::string(listID).c_str());
+        return "";
+    }
+    return playlists[listID];
+}
+
 
 // official pack
 static GlobalNamespace::IBeatmapLevelPack* GetCurrentSelectedLevelPack()
@@ -297,66 +456,6 @@ static void logPacks(::StringW lastCollectionName = "") {
     }
 }
 
-std::function<void()> getDeleteFunction() {
-    static std::function<void()> deleteFunction = (std::function<void()>) [] () {
-        if (!LevelCollectionTableView) {
-            getLogger().log(Logging::INFO, "Null LevelCollectionTableView");
-            return;
-        }
-        if (!deleteButton) {
-            getLogger().log(Logging::INFO, "Null deleteButton");
-            return;
-        }
-
-        if (UnityEngine::Color::get_red() != deleteButtonImageView->get_color()) {
-            deleteButtonImageView->set_color(UnityEngine::Color::get_red());
-            return;
-        }
-
-        static Il2CppClass* customPreviewBeatmapLevelClass = classof(GlobalNamespace::CustomPreviewBeatmapLevel*);
-        bool customLevel = LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel() && il2cpp_functions::class_is_assignable_from(customPreviewBeatmapLevelClass, il2cpp_functions::object_get_class(reinterpret_cast<Il2CppObject*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel())));
-        if(!customLevel) {
-            getLogger().log(Logging::INFO, "Not custom level");
-            return;
-        }
-
-        int selectedRow = LevelCollectionTableView->dyn__selectedRow();
-        int nextSelectedRow = (selectedRow < LevelCollectionTableView->NumberOfCells() - 1) ? selectedRow : LevelCollectionTableView->NumberOfCells() - 2;
-        auto lastCollectionIdx = AnnotatedBeatmapLevelCollectionsViewController->dyn__selectedItemIndex();
-        // auto lastCollectionName = GetCurrentSelectedAnnotatedBeatmapLevelCollection()->get_collectionName();
-        auto lastScrollPos = LevelCollectionTableView->dyn__tableView()->get_scrollView()->dyn__destinationPos();
-        GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
-
-        getLogger().log(Logging::INFO, "Delete %d/%d song %s at %s in list idx %d",
-                        selectedRow, LevelCollectionTableView->NumberOfCells(), // if at customn category, cells will add a pack header cell
-                        std::string(selectedlevel->get_songName()).c_str(), std::string(selectedlevel->get_customLevelPath()).c_str(),
-                        AnnotatedBeatmapLevelCollectionsViewController->dyn__selectedItemIndex());
-
-        if (LevelCollectionTableView->NumberOfCells() <= 1) {
-            getLogger().log(Logging::INFO, "No song remain after");
-        }
-        RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()),
-            [lastScrollPos, nextSelectedRow, lastCollectionIdx] {
-                getLogger().log(Logging::INFO, "Success delete song");
-
-                RuntimeSongLoader::API::RefreshSongs(true,
-                [lastScrollPos, nextSelectedRow, lastCollectionIdx] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
-                    getLogger().log(Logging::INFO, "Success refresh song");
-
-                    // select level collection
-                    AnnotatedBeatmapLevelCollectionsViewController->SetData(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections(), lastCollectionIdx, false);
-
-                    // select level
-                    // LevelCollectionTableView->SelectLevel(nextPreviewBeatmapLevels); // this will jump to center
-                    LevelCollectionTableView->dyn__tableView()->SelectCellWithIdx(nextSelectedRow, true); // select but scroll at head
-                    LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(lastScrollPos, false);
-                });
-            }
-        );
-    };
-    return deleteFunction;
-}
-
 #define MakeDelegate(DelegateType, varName) (il2cpp_utils::MakeDelegate<DelegateType>(classof(DelegateType), varName))
 
 UnityEngine::UI::Button* CreateBaseButton(std::string_view name, UnityEngine::Transform* parent, std::string_view buttonTemplate)
@@ -460,47 +559,76 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
             return;
         getLogger().log(Logging::INFO, "SetOnClick level delete button, id: %u", deleteButtonTransform->GetInstanceID());
         deleteButton = deleteButtonTransform->get_gameObject()->GetComponent<UnityEngine::UI::Button*>();
-
-        auto comps = deleteButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
+        deleteButtonImageView = deleteButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
             return "Icon" == x->get_name();
         });
-        if (comps) {
-            deleteButtonImageView = comps;
-        }
+        std::function<void()> deleteFunction = (std::function<void()>) [] () {
+            if (!deleteButtonImageView) {
+                getLogger().log(Logging::INFO, "Null deleteButtonImageView");
+                return;
+            }
+            if (UnityEngine::Color::get_red() != deleteButtonImageView->get_color()) {
+                deleteButtonImageView->set_color(UnityEngine::Color::get_red());
+                return;
+            }
+            GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
+            RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [] {
+                    getLogger().log(Logging::INFO, "Success delete song");
+                    RefreshAndStayList(LIST_ACTION::REMOVE);
+                }
+            );
+        };
         deleteButton->set_onClick(UnityEngine::UI::Button::ButtonClickedEvent::New_ctor());
-        deleteButton->get_onClick()->AddListener(MakeDelegate(UnityEngine::Events::UnityAction*, getDeleteFunction()));
+        deleteButton->get_onClick()->AddListener(MakeDelegate(UnityEngine::Events::UnityAction*, deleteFunction));
 
         auto posX = -22.5f;
         auto deleteAndRemoveButton = CreateIconButton("DeleteAndRemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
-                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(20.0f,7.0f), getDeleteFunction(),
-                                             FileToSprite("DeleteAndRemoveIcon"), "Delete and Remove Song from List");
+                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(20.0f,7.0f), [] () {
+                if (!deleteAndRemoveButtonImageView) {
+                    getLogger().log(Logging::INFO, "Null deleteAndRemoveButtonImageView");
+                    return;
+                }
+                if (UnityEngine::Color::get_red() != deleteAndRemoveButtonImageView->get_color()) {
+                    deleteAndRemoveButtonImageView->set_color(UnityEngine::Color::get_red());
+                    return;
+                }
+                GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
+                RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [] {
+                        getLogger().log(Logging::INFO, "Success delete song");
+                        UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::REMOVE);
+                    }
+                );
+            }, FileToSprite("DeleteAndRemoveIcon"), "Delete and Remove Song from List");
+        deleteAndRemoveButtonImageView = deleteAndRemoveButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
+            return "Icon" == x->get_name();
+        });
         deleteAndRemoveButton->get_transform()->SetAsLastSibling();
 
         posX += 15.0f + 1.25f ;
         auto removeButton = CreateIconButton("RemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                              UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-                //     OnClearButtonClickEvent();
+                UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::REMOVE);
             }, FileToSprite("RemoveIcon"), "Remove Song from List");
         removeButton->get_transform()->SetAsLastSibling();
 
         posX += 10.0f + 1.25f;
         auto insertButton = CreateIconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                              UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-                //     OnClearButtonClickEvent();
+                UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::INSERT);
             }, FileToSprite("InsertIcon"), "Insert to List");
         insertButton->get_transform()->SetAsLastSibling();
 
         posX += 10.0f + 1.25f;
         auto moveUpButton = CreateIconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                              UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-                //     OnClearButtonClickEvent();
+                UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::MOVE_UP);
             }, FileToSprite("MoveUpIcon"), "Move Up Song from List");
         moveUpButton->get_transform()->SetAsLastSibling();
 
         posX += 10.0f + 1.25f;
         auto moveDownButton = CreateIconButton("MoveDownFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                              UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-                //     OnClearButtonClickEvent();
+                UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::MOVE_DOWN);
             }, FileToSprite("MoveDownIcon"), "Move Down Song from List");
         moveDownButton->get_transform()->SetAsLastSibling();
     }
@@ -512,6 +640,8 @@ MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &GlobalNamespace::Standa
 
     if (deleteButtonImageView)
         deleteButtonImageView->set_color(UnityEngine::Color::get_white());
+    if (deleteAndRemoveButtonImageView)
+        deleteAndRemoveButtonImageView->set_color(UnityEngine::Color::get_white());
 }
 
 MAKE_HOOK_MATCH(StandardLevelDetailViewController_ShowContent, &GlobalNamespace::StandardLevelDetailViewController::ShowContent, void, GlobalNamespace::StandardLevelDetailViewController* self, ::GlobalNamespace::StandardLevelDetailViewController::ContentType contentType, ::StringW errorText, float downloadingProgress, ::StringW downloadingText)
