@@ -56,10 +56,11 @@
 
 #include "main.hpp"
 #include "logging.hpp"
-#include "toast.hpp"
+// #include "toast.hpp"
+#include "CustomTypes/Toast.hpp"
 
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
-static PlaylistEditor::Toast Toast;
+// static PlaylistEditor::Toast *Toast;
 // static CustomPreviewBeatmapLevel *selectedlevel = nullptr;
 static GlobalNamespace::LevelSelectionFlowCoordinator *LevelSelectionFlowCoordinator = nullptr;
 static GlobalNamespace::LevelSelectionNavigationController *LevelSelectionNavigationController = nullptr;
@@ -173,12 +174,12 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
                         // must ur wi chu li
                         continue;
                     case REMOVE:
-                        Toast.Show("remove song");
+                        PlaylistEditor::Toast::GetInstance()->ShowMessage("remove song");
                         continue;
                     case MOVE_DOWN:
                         if (i >= songs.Size() - 1) // already at bottom
                             return false;
-                        Toast.Show("move donwn song");
+                        PlaylistEditor::Toast::GetInstance()->ShowMessage("move donwn song");
                         document.GetObject()["songs"].PushBack(songs[i+1], allocator);
                         document.GetObject()["songs"].PushBack(songs[i], allocator);
                         i++;
@@ -186,7 +187,7 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
                     case MOVE_UP:
                         if (i <= 0) // already at top
                             return false;
-                        Toast.Show("move up song");
+                        PlaylistEditor::Toast::GetInstance()->ShowMessage("move up song");
                         document.GetObject()["songs"].PushBack(songs[i], allocator);
                         document.GetObject()["songs"][i].Swap(document.GetObject()["songs"][i-1]);
                         break;
@@ -212,7 +213,7 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
             success = true;
         }
     } catch (const std::exception &e) {
-        Toast.Show(e.what());
+        PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
         ERROR("Error loading playlist %s: %s", path.data(), e.what());
     }
     return success;
@@ -666,6 +667,7 @@ extern "C" void setup(ModInfo& info) {
 // Called later on in the game loading - a good time to install function hooks
 extern "C" void load() {
     il2cpp_functions::Init();
+    // Toast = PlaylistEditor::Toast::Create();
 
     RuntimeSongLoader::API::AddRefreshLevelPacksEvent(
         [] (RuntimeSongLoader::SongLoaderBeatmapLevelPackCollectionSO* customBeatmapLevelPackCollectionSO) {
