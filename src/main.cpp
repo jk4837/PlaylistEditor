@@ -318,7 +318,6 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::strin
                 PlaylistEditor::Toast::GetInstance()->ShowMessage("move up song");
                 break;
         }
-        RefreshAndStayList(act);
         return true;
     } catch (const std::exception &e) {
         PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
@@ -671,6 +670,7 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
                 RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [] {
                         INFO("Success delete song");
                         UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::REMOVE);
+                        RefreshAndStayList(LIST_ACTION::REMOVE);
                     }
                 );
             }, FileToSprite("DeleteAndRemoveIcon"), "Delete and Remove Song from List");
@@ -682,7 +682,8 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
         posX += 15.0f + 1.25f ;
         auto removeButton = CreateIconButton("RemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                              UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-                UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::REMOVE);
+                if (UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::REMOVE))
+                    RefreshAndStayList(LIST_ACTION::REMOVE);
             }, FileToSprite("RemoveIcon"), "Remove Song from List");
         removeButton->get_transform()->SetAsLastSibling();
 
@@ -690,6 +691,7 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
         auto moveUpButton = CreateIconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                              UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
                 UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::MOVE_UP);
+                RefreshAndStayList(LIST_ACTION::MOVE_UP);
             }, FileToSprite("MoveUpIcon"), "Move Up Song from List");
         moveUpButton->get_transform()->SetAsLastSibling();
 
@@ -697,6 +699,7 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
         auto moveDownButton = CreateIconButton("MoveDownFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                              UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
                 UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::MOVE_DOWN);
+                RefreshAndStayList(LIST_ACTION::MOVE_DOWN);
             }, FileToSprite("MoveDownIcon"), "Move Down Song from List");
         moveDownButton->get_transform()->SetAsLastSibling();
 
@@ -714,6 +717,7 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
                         INFO("Cell with idx %d : %s clicked", idx, std::string(list->data[idx].get_combinedText()).c_str());
                         std::string selectedPackId = CustomLevelPackPrefixID + std::string(list->data[idx].get_text());
                         UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::INSERT, GetPlaylistPath(selectedPackId));
+                        RefreshAndStayList(LIST_ACTION::INSERT);
                     });
                     list->set_listStyle(QuestUI::CustomListTableData::ListStyle::Simple);
                 }
