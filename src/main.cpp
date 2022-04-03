@@ -102,25 +102,32 @@ typedef enum LIST_ACTION {
 
 static void RefreshAndStayList(const LIST_ACTION act) {
 
-    auto lastCollectionIdx = AnnotatedBeatmapLevelCollectionsViewController->dyn__selectedItemIndex();
-    auto lastScrollPos = LevelCollectionTableView->dyn__tableView()->get_scrollView()->dyn__destinationPos();
-    int selectedRow = LevelCollectionTableView->dyn__selectedRow();
+    const auto lastCollectionIdx = AnnotatedBeatmapLevelCollectionsViewController->dyn__selectedItemIndex();
+    const auto lastScrollPos = LevelCollectionTableView->dyn__tableView()->get_scrollView()->dyn__destinationPos();
+    auto nextScrollPos = lastScrollPos;
+    const int selectedRow = LevelCollectionTableView->dyn__selectedRow();
     int nextSelectedRow;
+    const float rowHeight = LevelCollectionTableView->CellSize();
     switch (act) {
         case MOVE_DOWN:
             nextSelectedRow = selectedRow + 1;
+            if (nextSelectedRow*rowHeight > (lastScrollPos + 6*rowHeight))
+                nextScrollPos = lastScrollPos + rowHeight;
             break;
         case MOVE_UP:
             nextSelectedRow = selectedRow - 1;
+            if (nextSelectedRow*rowHeight < lastScrollPos)
+                nextScrollPos = lastScrollPos - rowHeight;
             break;
         case INSERT:
+            nextSelectedRow = selectedRow;
         case REMOVE:
             nextSelectedRow = (selectedRow < LevelCollectionTableView->NumberOfCells() - 1) ? selectedRow : LevelCollectionTableView->NumberOfCells() - 2;
             break;
     }
 
     RuntimeSongLoader::API::RefreshSongs(true,
-    [lastScrollPos, nextSelectedRow, lastCollectionIdx] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
+    [lastScrollPos, nextScrollPos, nextSelectedRow, lastCollectionIdx] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
         INFO("Success refresh song");
 
         // select level collection
@@ -130,6 +137,8 @@ static void RefreshAndStayList(const LIST_ACTION act) {
         // LevelCollectionTableView->SelectLevel(nextPreviewBeatmapLevels); // this will jump to center
         LevelCollectionTableView->dyn__tableView()->SelectCellWithIdx(nextSelectedRow, true); // select but scroll at head
         LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(lastScrollPos, false);
+        if (nextScrollPos != lastScrollPos)
+            LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(nextScrollPos, true);
     });
 }
 
