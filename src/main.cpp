@@ -79,6 +79,7 @@ static GlobalNamespace::BeatmapDifficultySegmentedControlController *LevelDiffic
 static GlobalNamespace::BeatmapCharacteristicSegmentedControlController *BeatmapCharacteristicSelectionViewController = nullptr;
 static GlobalNamespace::AnnotatedBeatmapLevelCollectionsViewController *AnnotatedBeatmapLevelCollectionsViewController = nullptr;
 
+std::map<::StringW, std::string> playlists;
 static UnityEngine::UI::Button *deleteButton = nullptr;
 static HMUI::ImageView *deleteButtonImageView = nullptr;
 static HMUI::ImageView *deleteAndRemoveButtonImageView = nullptr;
@@ -203,6 +204,39 @@ bool FindSongIdx(rapidjson::Document &document, const std::string &selectedLevel
     return false;
 }
 
+std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh = false) {
+    if ("custom_levelPack_CustomLevels" == listID)
+        return "";
+    if (fullRefresh)
+        playlists.clear();
+    if (!playlists.contains(listID)) {
+        INFO("Don't have playlist %s, reload all", std::string(listID).c_str());
+        playlists.clear();
+        const std::string playlistPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/PlaylistManager/Playlists";
+
+        if(!std::filesystem::is_directory(playlistPath)) {
+            INFO("Don't have playlist dir %s", playlistPath.c_str());
+            return "";
+        }
+        for (const auto& entry : std::filesystem::directory_iterator(playlistPath)) {
+            if(!entry.is_directory()) {
+                auto path = entry.path().string();
+                auto listOpt = PlaylistManager::ReadFromFile(path);
+                if(listOpt.has_value()) {
+                    auto list = listOpt.value();
+                    playlists[CustomLevelPackPrefixID + list.GetPlaylistTitle()] = path;
+                    INFO("LoadPlaylists %s : %s", list.GetPlaylistTitle().c_str(), path.c_str());
+                }
+            }
+        }
+    }
+    if (!playlists.contains(listID)) {
+        INFO("Failed to find playlist of %s", std::string(listID).c_str());
+        return "";
+    }
+    return playlists[listID];
+}
+
 bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::string &insertPath = "") {
     try {
         rapidjson::Document document;
@@ -241,13 +275,22 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::strin
             }
             break;
             case REMOVE:
-                if (!found) {
+                if (path.empty()) {
+                    bool has_remove = false;
+                    if (playlists.empty())
+                        GetPlaylistPath();
+                    for (auto it : playlists)
+                        has_remove |= UpdateFile(it.second, REMOVE);
+                    if (!has_remove)
+                        return false;
+                } else if (!found) {
                     ERROR("Failed to find %s in playlist dir %s", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str());
                     return false;
+                } else {
+                    songs.Erase(songs.Begin() + idx);
+                    if (!WriteFile(path, document))
+                        throw std::invalid_argument("failed to write file");
                 }
-                songs.Erase(songs.Begin() + idx);
-                if (!WriteFile(path, document))
-                    throw std::invalid_argument("failed to write file");
                 PlaylistEditor::Toast::GetInstance()->ShowMessage("remove song");
                 break;
             case MOVE_DOWN:
@@ -282,41 +325,6 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::strin
         ERROR("Error loading playlist %s: %s", path.data(), e.what());
     }
     return false;
-}
-
-
-std::map<::StringW, std::string> playlists;
-std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh = false) {
-    if ("custom_levelPack_CustomLevels" == listID)
-        return "";
-    if (fullRefresh)
-        playlists.clear();
-    if (!playlists.contains(listID)) {
-        INFO("Don't have playlist %s, reload all", std::string(listID).c_str());
-        playlists.clear();
-        const std::string playlistPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/PlaylistManager/Playlists";
-
-        if(!std::filesystem::is_directory(playlistPath)) {
-            INFO("Don't have playlist dir %s", playlistPath.c_str());
-            return "";
-        }
-        for (const auto& entry : std::filesystem::directory_iterator(playlistPath)) {
-            if(!entry.is_directory()) {
-                auto path = entry.path().string();
-                auto listOpt = PlaylistManager::ReadFromFile(path);
-                if(listOpt.has_value()) {
-                    auto list = listOpt.value();
-                    playlists[CustomLevelPackPrefixID + list.GetPlaylistTitle()] = path;
-                    INFO("LoadPlaylists %s : %s", list.GetPlaylistTitle().c_str(), path.c_str());
-                }
-            }
-        }
-    }
-    if (!playlists.contains(listID)) {
-        INFO("Failed to find playlist of %s", std::string(listID).c_str());
-        return "";
-    }
-    return playlists[listID];
 }
 
 
