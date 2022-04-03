@@ -8,7 +8,6 @@
 #include <dirent.h>
 #include <fstream>
 
-
 #include "TMPro/TextMeshProUGUI.hpp"
 #include "UnityEngine/Events/UnityAction.hpp"
 #include "UnityEngine/Object.hpp"
@@ -57,8 +56,10 @@
 
 #include "main.hpp"
 #include "logging.hpp"
+#include "toast.hpp"
 
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
+static PlaylistEditor::Toast Toast;
 // static CustomPreviewBeatmapLevel *selectedlevel = nullptr;
 static GlobalNamespace::LevelSelectionFlowCoordinator *LevelSelectionFlowCoordinator = nullptr;
 static GlobalNamespace::LevelSelectionNavigationController *LevelSelectionNavigationController = nullptr;
@@ -172,10 +173,12 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
                         // must ur wi chu li
                         continue;
                     case REMOVE:
+                        Toast.Show("remove song");
                         continue;
                     case MOVE_DOWN:
                         if (i >= songs.Size() - 1) // already at bottom
                             return false;
+                        Toast.Show("move donwn song");
                         document.GetObject()["songs"].PushBack(songs[i+1], allocator);
                         document.GetObject()["songs"].PushBack(songs[i], allocator);
                         i++;
@@ -183,6 +186,7 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
                     case MOVE_UP:
                         if (i <= 0) // already at top
                             return false;
+                        Toast.Show("move up song");
                         document.GetObject()["songs"].PushBack(songs[i], allocator);
                         document.GetObject()["songs"][i].Swap(document.GetObject()["songs"][i-1]);
                         break;
@@ -208,6 +212,7 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
             success = true;
         }
     } catch (const std::exception &e) {
+        Toast.Show(e.what());
         ERROR("Error loading playlist %s: %s", path.data(), e.what());
     }
     return success;
@@ -216,6 +221,8 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
 
 std::map<::StringW, std::string> playlists;
 std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh = false) {
+    if ("custom_levelPack_CustomLevels" == listID)
+        return "";
     if (fullRefresh)
         playlists.clear();
     if (!playlists.contains(listID)) {
