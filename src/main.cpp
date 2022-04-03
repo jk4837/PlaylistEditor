@@ -79,6 +79,7 @@ static GlobalNamespace::AnnotatedBeatmapLevelCollectionsViewController *Annotate
 static UnityEngine::UI::Button *deleteButton = nullptr;
 static HMUI::ImageView *deleteButtonImageView = nullptr;
 static HMUI::ImageView *deleteAndRemoveButtonImageView = nullptr;
+static QuestUI::CustomListTableData *list = nullptr;
 
 // Loads the config from disk using our modInfo, then returns it for use
 Configuration& getConfig() {
@@ -136,21 +137,49 @@ static std::string rapidjsonToString(rapidjson::Document &document) {
     return std::string(buffer.GetString());
 }
 
-bool UpdateFile(const std::string &path, const LIST_ACTION act) {
-    bool success = false;
-    if(!fileexists(path))
+bool WriteFile(const std::string &path, rapidjson::Document &document) {
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+
+    document.Accept(writer);
+    if (!writefile(path, buffer.GetString())) {
+        ERROR("Failed to write file %s", path.data());
         return false;
-    auto json = readfile(path);
-    rapidjson::Document document;
-    document.Parse(json);
+    }
+    return true;
+}
+
+bool LoadFile(const std::string &path, rapidjson::Document &document) {
+    bool success = false;
     try {
+        if(!fileexists(path))
+            return false;
+        auto json = readfile(path);
+        document.Parse(json);
         if (document.HasParseError())
             throw std::invalid_argument("parsing error");
         if (!document.IsObject())
             throw std::invalid_argument("root isn't object");
         if (document.GetObject()["songs"].GetType() != rapidjson::kArrayType)
             throw std::invalid_argument("root/songs not array");
+        success = true;
+    } catch (const std::exception &e) {
+        PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
+        ERROR("Error loading playlist %s: %s", path.data(), e.what());
+    }
+    return success;
+}
 
+bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::string &insertPath = "") {
+    bool success = false;
+    rapidjson::Document document;
+    rapidjson::Document document2;
+    if(!LoadFile(path, document))
+        return false;
+    if ((INSERT == act) && !LoadFile(insertPath, document2))
+        return false;
+    INFO("%s , add , %s", path.c_str(), insertPath.c_str());
+    try {
         const std::string CustomLevelPrefixID = "custom_level_";
         rapidjson::Value tmp(rapidjson::kArrayType);
         tmp = document.GetObject()["songs"];
@@ -159,6 +188,7 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
         document.GetObject()["songs"].SetArray();
         bool found = false;
         auto songs = tmp.GetArray();
+        rapidjson::Value insertSong;
         for (rapidjson::SizeType i = 0; i < songs.Size(); i++) {
             if (!songs[i].IsObject())
                 throw std::invalid_argument("invalid song object");
@@ -171,7 +201,7 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
 
                 switch (act) {
                     case INSERT:
-                        // must ur wi chu li
+                        insertSong = songs[i];
                         continue;
                     case REMOVE:
                         PlaylistEditor::Toast::GetInstance()->ShowMessage("remove song");
@@ -200,14 +230,12 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
         if (!found)
             ERROR("Failed to find %s in playlist dir %s, count: %u", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str(), songs.Size());
         else {
-            INFO("%u %u", songs.Size(), document.GetObject()["songs"].Size());
-            if (document.GetObject()["songs"].Size() == 0)
-                throw std::invalid_argument("some thing wrong");
-
-            rapidjson::StringBuffer buffer;
-            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-            document.Accept(writer);
-            if (!writefile(path, buffer.GetString()))
+            if (INSERT == act) {
+                rapidjson::Document::AllocatorType& allocator2 = document2.GetAllocator();
+                document2.GetObject()["songs"].PushBack(insertSong, allocator2);
+                if (!WriteFile(insertPath, document2))
+                    throw std::invalid_argument("failed to write file");
+            } else if (!WriteFile(path, document))
                 throw std::invalid_argument("failed to write file");
             RefreshAndStayList(act);
             success = true;
@@ -221,6 +249,7 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act) {
 
 
 std::map<::StringW, std::string> playlists;
+const std::string CustomLevelPackPrefixID = "custom_levelPack_";
 std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh = false) {
     if ("custom_levelPack_CustomLevels" == listID)
         return "";
@@ -229,7 +258,6 @@ std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh
     if (!playlists.contains(listID)) {
         INFO("Don't have playlist %s, reload all", std::string(listID).c_str());
         playlists.clear();
-        const std::string CustomLevelPackPrefixID = "custom_levelPack_";
         const std::string playlistPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/PlaylistManager/Playlists";
 
         if(!std::filesystem::is_directory(playlistPath)) {
@@ -615,13 +643,6 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
         removeButton->get_transform()->SetAsLastSibling();
 
         posX += 10.0f + 1.25f;
-        auto insertButton = CreateIconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
-                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-                UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::INSERT);
-            }, FileToSprite("InsertIcon"), "Insert to List");
-        insertButton->get_transform()->SetAsLastSibling();
-
-        posX += 10.0f + 1.25f;
         auto moveUpButton = CreateIconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                              UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
                 UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::MOVE_UP);
@@ -634,6 +655,38 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
                 UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::MOVE_DOWN);
             }, FileToSprite("MoveDownIcon"), "Move Down Song from List");
         moveDownButton->get_transform()->SetAsLastSibling();
+
+        posX += 10.0f + 1.25f;
+        auto insertButton = CreateIconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                if (!list) {
+                    auto screenContainer = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [](auto x) {
+                        return x->get_name()->Equals("ScreenContainer");
+                    });
+                    list = QuestUI::BeatSaberUI::CreateScrollableList(screenContainer->get_transform(),
+                        UnityEngine::Vector2(posX + 86.0f, -62.0f), UnityEngine::Vector2(25.0f, 30.0f),
+                        [] (int idx) {
+                        list->get_transform()->get_parent()->get_gameObject()->set_active(false);
+                        INFO("Cell with idx %d : %s clicked", idx, std::string(list->data[idx].get_combinedText()).c_str());
+                        std::string selectedPackId = CustomLevelPackPrefixID + std::string(list->data[idx].get_text());
+                        UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::INSERT, GetPlaylistPath(selectedPackId));
+                    });
+                    list->set_listStyle(QuestUI::CustomListTableData::ListStyle::Simple);
+                }
+                list->get_transform()->get_parent()->get_gameObject()->set_active(true);
+                GetPlaylistPath("", true);
+                list->data.clear();
+                for (auto it : playlists) {
+                    std::string listName = std::string(it.first).substr(CustomLevelPackPrefixID.length());
+                    list->data.emplace_back(QuestUI::CustomListTableData::CustomCellInfo{listName});
+                }
+                if (list && list->tableView) {
+                    list->tableView->ClearSelection();
+                    list->tableView->ReloadData();
+                    list->tableView->RefreshCellsContent();
+                }
+            }, FileToSprite("InsertIcon"), "Insert to List");
+        insertButton->get_transform()->SetAsLastSibling();
     }
 }
 
