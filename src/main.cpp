@@ -59,6 +59,9 @@
 // #include "toast.hpp"
 #include "CustomTypes/Toast.hpp"
 
+const std::string CustomLevelPackPrefixID = "custom_levelPack_";
+const std::string CustomLevelPrefixID = "custom_level_";
+
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
 // static PlaylistEditor::Toast *Toast;
 // static CustomPreviewBeatmapLevel *selectedlevel = nullptr;
@@ -170,86 +173,110 @@ bool LoadFile(const std::string &path, rapidjson::Document &document) {
     return success;
 }
 
-bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::string &insertPath = "") {
-    bool success = false;
-    rapidjson::Document document;
-    rapidjson::Document document2;
-    if(!LoadFile(path, document))
-        return false;
-    if ((INSERT == act) && !LoadFile(insertPath, document2))
-        return false;
-    INFO("%s , add , %s", path.c_str(), insertPath.c_str());
+bool FindSongIdx(rapidjson::Document &document, const std::string &selectedLevelID, int &idx) {
+    const auto selectedHash = selectedLevelID.substr(CustomLevelPrefixID.length());
     try {
-        const std::string CustomLevelPrefixID = "custom_level_";
-        rapidjson::Value tmp(rapidjson::kArrayType);
-        tmp = document.GetObject()["songs"];
-
-        rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
-        document.GetObject()["songs"].SetArray();
-        bool found = false;
-        auto songs = tmp.GetArray();
-        rapidjson::Value insertSong;
+        const auto &songs = document.GetObject()["songs"].GetArray();
         for (rapidjson::SizeType i = 0; i < songs.Size(); i++) {
             if (!songs[i].IsObject())
                 throw std::invalid_argument("invalid song object");
             if (!songs[i].HasMember("hash") || !songs[i]["hash"].IsString())
                 throw std::invalid_argument("invalid hash in song object");
-
-            const std::string levelID = CustomLevelPrefixID + songs[i]["hash"].GetString();
-            if (0 == strcasecmp(levelID.c_str(), (std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str()))) {
-                found = true;
-
-                switch (act) {
-                    case INSERT:
-                        insertSong = songs[i];
-                        continue;
-                    case REMOVE:
-                        PlaylistEditor::Toast::GetInstance()->ShowMessage("remove song");
-                        continue;
-                    case MOVE_DOWN:
-                        if (i >= songs.Size() - 1) // already at bottom
-                            return false;
-                        PlaylistEditor::Toast::GetInstance()->ShowMessage("move donwn song");
-                        document.GetObject()["songs"].PushBack(songs[i+1], allocator);
-                        document.GetObject()["songs"].PushBack(songs[i], allocator);
-                        i++;
-                        break;
-                    case MOVE_UP:
-                        if (i <= 0) // already at top
-                            return false;
-                        PlaylistEditor::Toast::GetInstance()->ShowMessage("move up song");
-                        document.GetObject()["songs"].PushBack(songs[i], allocator);
-                        document.GetObject()["songs"][i].Swap(document.GetObject()["songs"][i-1]);
-                        break;
-                }
-
-            } else {
-                document.GetObject()["songs"].PushBack(songs[i], allocator);
-            }
+            if (0 != strcasecmp(songs[i]["hash"].GetString(), selectedHash.c_str()))
+                continue;
+            idx = i;
+            return true;
         }
-        if (!found)
-            ERROR("Failed to find %s in playlist dir %s, count: %u", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str(), songs.Size());
-        else {
-            if (INSERT == act) {
+    } catch (const std::exception &e) {
+        PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
+        ERROR("Error parsing playlist: %s", e.what());
+    }
+    return false;
+}
+
+bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::string &insertPath = "") {
+    try {
+        rapidjson::Document document;
+        if(!path.empty() && !LoadFile(path, document))
+            throw std::invalid_argument("failed to load file");
+
+        int idx = 0;
+        const std::string selectedLevelID = LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID();
+        const bool found = !path.empty() && FindSongIdx(document, selectedLevelID, idx);
+
+        const auto &songs = document.GetObject()["songs"].GetArray();
+        switch (act) {
+            case INSERT:
+            {
+                rapidjson::Document document2;
                 rapidjson::Document::AllocatorType& allocator2 = document2.GetAllocator();
-                document2.GetObject()["songs"].PushBack(insertSong, allocator2);
+                rapidjson::Value insertSong(rapidjson::kObjectType);
+
+                if (!found) {
+                    GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
+                    insertSong.SetObject();
+                    insertSong.AddMember("songName", std::string(selectedlevel->get_songName()), allocator2);
+                    insertSong.AddMember("levelAuthorName", std::string(selectedlevel->get_levelAuthorName()), allocator2);
+                    insertSong.AddMember("hash", std::string(selectedlevel->get_levelID()).substr(CustomLevelPrefixID.length()), allocator2);
+                    insertSong.AddMember("levelid", std::string(selectedlevel->get_levelID()), allocator2);
+                    insertSong.AddMember("uploader", std::string(selectedlevel->get_levelAuthorName()), allocator2);
+                } else
+                    insertSong = songs[idx];
+
+                if (!LoadFile(insertPath, document2))
+                    throw std::invalid_argument("failed to load file which want to insert to");
+                document2.GetObject()["songs"].GetArray().PushBack(insertSong, allocator2);
                 if (!WriteFile(insertPath, document2))
                     throw std::invalid_argument("failed to write file");
-            } else if (!WriteFile(path, document))
-                throw std::invalid_argument("failed to write file");
-            RefreshAndStayList(act);
-            success = true;
+                PlaylistEditor::Toast::GetInstance()->ShowMessage("insert song");
+            }
+            break;
+            case REMOVE:
+                if (!found) {
+                    ERROR("Failed to find %s in playlist dir %s", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str());
+                    return false;
+                }
+                songs.Erase(songs.Begin() + idx);
+                if (!WriteFile(path, document))
+                    throw std::invalid_argument("failed to write file");
+                PlaylistEditor::Toast::GetInstance()->ShowMessage("remove song");
+                break;
+            case MOVE_DOWN:
+                if (!found) {
+                    ERROR("Failed to find %s in playlist dir %s", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str());
+                    return false;
+                }
+                if (idx >= songs.Size() - 1) // already at bottom
+                    return false;
+                songs[idx].Swap(songs[idx+1]);
+                if (!WriteFile(path, document))
+                    throw std::invalid_argument("failed to write file");
+                PlaylistEditor::Toast::GetInstance()->ShowMessage("move donwn song");
+                break;
+            case MOVE_UP:
+                if (!found) {
+                    ERROR("Failed to find %s in playlist dir %s", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str());
+                    return false;
+                }
+                if (idx <= 0) // already at top
+                    return false;
+                songs[idx].Swap(songs[idx-1]);
+                if (!WriteFile(path, document))
+                    throw std::invalid_argument("failed to write file");
+                PlaylistEditor::Toast::GetInstance()->ShowMessage("move up song");
+                break;
         }
+        RefreshAndStayList(act);
+        return true;
     } catch (const std::exception &e) {
         PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
         ERROR("Error loading playlist %s: %s", path.data(), e.what());
     }
-    return success;
+    return false;
 }
 
 
 std::map<::StringW, std::string> playlists;
-const std::string CustomLevelPackPrefixID = "custom_levelPack_";
 std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh = false) {
     if ("custom_levelPack_CustomLevels" == listID)
         return "";
