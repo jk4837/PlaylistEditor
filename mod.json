@@ -38,6 +38,10 @@
 	  {
 		"name": "DeleteAndRemoveIcon.png",
 		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/DeleteAndRemoveIcon.png"
+	  },
+	  {
+		"name": "EnterIcon.png",
+		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/EnterIcon.png"
 	  }
 	]
 }

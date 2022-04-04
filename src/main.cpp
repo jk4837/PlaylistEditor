@@ -61,6 +61,7 @@
 // #include "toast.hpp"
 #include "CustomTypes/Toast.hpp"
 
+const std::string CustomLevelPackPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/PlaylistManager/Playlists/";
 const std::string CustomLevelPackPrefixID = "custom_levelPack_";
 const std::string CustomLevelID = "custom_levelPack_CustomLevels";
 const std::string CustomLevelPrefixID = "custom_level_";
@@ -83,6 +84,10 @@ static GlobalNamespace::BeatmapCharacteristicSegmentedControlController *Beatmap
 static GlobalNamespace::AnnotatedBeatmapLevelCollectionsViewController *AnnotatedBeatmapLevelCollectionsViewController = nullptr;
 
 std::map<::StringW, std::string> playlists;
+static UnityEngine::UI::Button *createListButton = nullptr;
+HMUI::InputFieldView* createListInput = nullptr;
+static UnityEngine::UI::Button *deleteListButton = nullptr;
+static HMUI::ImageView *deleteListButtonImageView = nullptr;
 static UnityEngine::UI::Button *deleteButton = nullptr;
 static HMUI::ImageView *deleteButtonImageView = nullptr;
 static HMUI::ImageView *deleteAndRemoveButtonImageView = nullptr;
@@ -114,7 +119,7 @@ typedef enum LIST_ACTION {
 } LIST_ACTION_T;
 
 typedef enum SCROLL_ACTION {
-    SCROLL_STAY, SCROLL_REMOVE_STAY, SCROLL_MOVE_UP, SCROLL_MOVE_DOWN
+    NO_STAY, SCROLL_STAY, SCROLL_REMOVE_STAY, SCROLL_MOVE_UP, SCROLL_MOVE_DOWN
 } MOVE_ACTION_T;
 
 static std::string rapidjsonToString(rapidjson::Document &document) {
@@ -211,6 +216,32 @@ std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh
         return "";
     }
     return playlists[listID];
+}
+
+bool CreateFile(const std::string &name) {
+    try {
+        rapidjson::Document document;
+        rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+
+        document.SetObject();
+        document.AddMember("playlistTitle", name, allocator);   // require
+        document.AddMember("playlistDescription", "Created by " ID, allocator);
+        document.AddMember("songs", rapidjson::Value(rapidjson::kArrayType), allocator);             // require
+        document.AddMember("image", rapidjson::Value(), allocator);
+        if (!WriteFile(CustomLevelPackPath + name, document))
+            throw std::invalid_argument("failed to write file");
+        return true;
+    } catch (const std::exception &e) {
+        PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
+        ERROR("Error create playlist %s: %s", name.c_str(), e.what());
+    }
+    return false;
+}
+
+bool DeleteFile(const std::string &path) {
+    if(!fileexists(path))
+        return true;
+    return deletefile(path);
 }
 
 bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::string &insertPath = "") {
@@ -337,12 +368,15 @@ static void RefreshAndStayList(const SCROLL_ACTION act) {
         case SCROLL_REMOVE_STAY:
             nextSelectedRow = (selectedRow < LevelCollectionTableView->NumberOfCells() - 1) ? selectedRow : LevelCollectionTableView->NumberOfCells() - 2;
             break;
+        default:
+            break;
     }
 
     RuntimeSongLoader::API::RefreshSongs(true,
-    [lastScrollPos, nextScrollPos, nextSelectedRow, lastCollectionIdx] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
+    [lastScrollPos, nextScrollPos, nextSelectedRow, lastCollectionIdx, act] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
         INFO("Success refresh song");
-
+        if (NO_STAY == act)
+            return;
         if (IsSelectedCustomPack())
             // select level collection
             AnnotatedBeatmapLevelCollectionsViewController->SetData(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections(), lastCollectionIdx, false);
@@ -569,7 +603,84 @@ static UnityEngine::Sprite* FileToSprite(const std::string_view &image_name)
     return nullptr;
 }
 
-static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
+#include "questui/shared/CustomTypes/Components/WeakPtrGO.hpp"
+#include "codegen/include/HMUI/InputFieldView.hpp"
+#include "codegen/include/Polyglot/LocalizedTextMeshProUGUI.hpp"
+#include "codegen/include/HMUI/InputFieldView_InputFieldChanged.hpp"
+HMUI::InputFieldView* CreateStringInput(UnityEngine::Transform* parent, StringW settingsName, StringW currentValue, UnityEngine::Vector2 anchoredPosition, float width,std::function<void(StringW)> onEnter) {
+    auto originalFieldView = UnityEngine::Resources::FindObjectsOfTypeAll<HMUI::InputFieldView *>().First(
+        [](HMUI::InputFieldView *x) {
+            return x->get_name() == "GuestNameInputField";
+        }
+    );
+    UnityEngine::GameObject* gameObj = UnityEngine::Object::Instantiate(originalFieldView->get_gameObject(), parent, false);
+    gameObj->set_name("QuestUIStringInput");
+
+    UnityEngine::RectTransform* rectTransform = gameObj->GetComponent<UnityEngine::RectTransform*>();
+    rectTransform->SetParent(parent, false);
+    rectTransform->set_anchoredPosition(anchoredPosition);
+    rectTransform->set_sizeDelta(UnityEngine::Vector2(width, 10.0f));
+    rectTransform->set_localScale({0.75, 0.75, 1});
+
+    HMUI::InputFieldView* fieldView = gameObj->GetComponent<HMUI::InputFieldView*>();
+    fieldView->dyn__useGlobalKeyboard() = true;
+    fieldView->dyn__textLengthLimit() = 28;
+
+    fieldView->Awake();
+
+    std::function<void()> enterFunction = (std::function<void()>) [fieldView, onEnter] () {
+        if (onEnter)
+            onEnter(fieldView->get_text());
+    };
+    auto clearButton = fieldView->get_gameObject()->Find("ClearButton")->GetComponent<UnityEngine::UI::Button*>();
+    clearButton->set_onClick(UnityEngine::UI::Button::ButtonClickedEvent::New_ctor());
+    clearButton->get_onClick()->AddListener(MakeDelegate(UnityEngine::Events::UnityAction*, enterFunction));
+    QuestUI::BeatSaberUI::SetButtonIcon(clearButton, FileToSprite("EnterIcon"));
+
+    UnityEngine::Object::Destroy(fieldView->dyn__placeholderText()->GetComponent<Polyglot::LocalizedTextMeshProUGUI*>());
+    fieldView->dyn__placeholderText()->GetComponent<TMPro::TextMeshProUGUI*>()->SetText(settingsName);
+    fieldView->SetText(currentValue);
+
+    return fieldView;
+}
+
+static void createListActionButton() {
+    auto screenContainer = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [](auto x) {
+        return x->get_name()->Equals("ScreenContainer");
+    });
+    createListButton = CreateIconButton("CreateListButton", screenContainer->get_transform(), "PracticeButton",
+                                        UnityEngine::Vector2(69.0f, 27.0f), UnityEngine::Vector2(10.0f, 7.0f), [screenContainer] () {
+            if (!createListInput)
+                createListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
+                                    UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [] (StringW value) {
+                                        INFO("Enter %s", std::string(value).c_str());
+                                        if (CreateFile(value))
+                                            RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
+                                        createListInput->get_gameObject()->set_active(false);
+                });
+            if (createListInput->get_gameObject()->get_active()) {
+                createListInput->get_gameObject()->set_active(false);
+                return;
+            }
+            createListInput->SetText("");
+            createListInput->get_gameObject()->set_active(true);
+        }, FileToSprite("InsertIcon"), "Create List");
+    deleteListButton = CreateIconButton("DeleteListButton", screenContainer->get_transform(), "PracticeButton",
+                                        UnityEngine::Vector2(69.0f, 33.0f), UnityEngine::Vector2(10.0f, 7.0f), [] () {
+                            if (UnityEngine::Color::get_red() != deleteListButtonImageView->get_color()) {
+                                deleteListButtonImageView->set_color(UnityEngine::Color::get_red());
+                                return;
+                            }
+                            DeleteFile(GetPlaylistPath(GetSelectedPackID()));
+                            deleteListButtonImageView->set_color(UnityEngine::Color::get_white());
+                            RefreshAndStayList(SCROLL_ACTION::NO_STAY);
+                        }, FileToSprite("DeleteIcon"), "Delete List");
+    deleteListButtonImageView = deleteListButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
+        return "Icon" == x->get_name();
+    });
+}
+
+static void createActionButton(UnityEngine::Transform *parent) {
     auto deleteButtonTransform = parent->FindChild("DeleteLevelButton");
     if (!deleteButtonTransform)
         return;
@@ -690,6 +801,8 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
         }, FileToSprite("InsertIcon"), "Insert to List");
     insertButton->get_gameObject()->set_active(false);
     insertButton->get_transform()->SetAsLastSibling();
+
+    createListActionButton();
 }
 
 void adjustUI(const bool customLevel)
@@ -755,7 +868,7 @@ MAKE_HOOK_MATCH(StandardLevelDetailViewController_ShowContent, &GlobalNamespace:
     StandardLevelDetailViewController_ShowContent(self, contentType, errorText, downloadingProgress, downloadingText);
 
     if (!deleteButton) {
-        setOnClickLevelDeleteButton(self->dyn__standardLevelDetailView()->get_practiceButton()->get_transform()->get_parent());
+        createActionButton(self->dyn__standardLevelDetailView()->get_practiceButton()->get_transform()->get_parent());
         bool customLevel = self->dyn__previewBeatmapLevel() && il2cpp_functions::class_is_assignable_from(classof(GlobalNamespace::CustomPreviewBeatmapLevel*), il2cpp_functions::object_get_class(reinterpret_cast<Il2CppObject*>(self->dyn__previewBeatmapLevel())));
         adjustUI(customLevel);
     }
