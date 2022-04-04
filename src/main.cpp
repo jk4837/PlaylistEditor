@@ -27,12 +27,14 @@
 #include "UnityEngine/UI/Image.hpp"
 #include "questui/shared/BeatSaberUI.hpp"
 #include "questui/shared/CustomTypes/Components/ExternalComponents.hpp"
+#include "questui/shared/CustomTypes/Components/ClickableText.hpp"
 #include "codegen/include/HMUI/HoverHintController.hpp"
 #include "codegen/include/HMUI/ViewController_AnimationDirection.hpp"
 #include "codegen/include/HMUI/ScrollView.hpp"
 #include "codegen/include/HMUI/TableView.hpp"
 #include "codegen/include/HMUI/TableView_ScrollPositionType.hpp"
 #include "codegen/include/HMUI/ImageView.hpp"
+#include "codegen/include/System/Action.hpp"
 #include "playlistmanager/shared/PlaylistManager.hpp"
 #include "GlobalNamespace/AnnotatedBeatmapLevelCollectionsViewController.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSegmentedControlController.hpp"
@@ -83,7 +85,10 @@ std::map<::StringW, std::string> playlists;
 static UnityEngine::UI::Button *deleteButton = nullptr;
 static HMUI::ImageView *deleteButtonImageView = nullptr;
 static HMUI::ImageView *deleteAndRemoveButtonImageView = nullptr;
-static QuestUI::CustomListTableData *list = nullptr;
+static UnityEngine::UI::Button *insertButton = nullptr;
+static HMUI::ModalView *listModal = nullptr;
+static UnityEngine::GameObject *listContainer = nullptr;
+static std::vector<QuestUI::ClickableText *> listModalItem;
 
 // Loads the config from disk using our modInfo, then returns it for use
 Configuration& getConfig() {
@@ -706,34 +711,33 @@ static void setOnClickLevelDeleteButton(UnityEngine::Transform *parent) {
         moveDownButton->get_transform()->SetAsLastSibling();
 
         posX += 10.0f + 1.25f;
-        auto insertButton = CreateIconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+        insertButton = CreateIconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                              UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-                if (!list) {
+                if (!listModal) {
                     auto screenContainer = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [](auto x) {
                         return x->get_name()->Equals("ScreenContainer");
                     });
-                    list = QuestUI::BeatSaberUI::CreateScrollableList(screenContainer->get_transform(),
-                        UnityEngine::Vector2(posX + 86.0f, -62.0f), UnityEngine::Vector2(25.0f, 30.0f),
-                        [] (int idx) {
-                        list->get_transform()->get_parent()->get_gameObject()->set_active(false);
-                        INFO("Cell with idx %d : %s clicked", idx, std::string(list->data[idx].get_combinedText()).c_str());
-                        std::string selectedPackId = CustomLevelPackPrefixID + std::string(list->data[idx].get_text());
+
+                    listModal = QuestUI::BeatSaberUI::CreateModal(screenContainer->get_transform(),
+                        UnityEngine::Vector2(30.0f, 25.0f), UnityEngine::Vector2(posX + 84.0f, -25.0f), nullptr);
+                    listContainer = QuestUI::BeatSaberUI::CreateScrollableModalContainer(listModal);
+                    listModal->get_transform()->set_localScale({0.75, 0.75, 1});
+
+                }
+                listModal->get_gameObject()->set_active(true);
+                insertButton->set_interactable(false);
+                listModalItem.clear();
+                GetPlaylistPath("", true);
+                for (auto it : playlists) {
+                    std::string selectedPackName = std::string(it.first).substr(CustomLevelPackPrefixID.length());
+                    listModalItem.push_back(QuestUI::BeatSaberUI::CreateClickableText(listContainer->get_transform(), selectedPackName, false, [selectedPackName] () {
+                        std::string selectedPackId = CustomLevelPackPrefixID + selectedPackName;
+                        INFO("Cell %s clicked", selectedPackId.c_str());
+                        listModal->get_gameObject()->set_active(false);
+                        insertButton->set_interactable(true);
                         UpdateFile(GetPlaylistPath(GetCurrentSelectedLevelPack()->get_packID()), LIST_ACTION::INSERT, GetPlaylistPath(selectedPackId));
                         RefreshAndStayList(LIST_ACTION::INSERT);
-                    });
-                    list->set_listStyle(QuestUI::CustomListTableData::ListStyle::Simple);
-                }
-                list->get_transform()->get_parent()->get_gameObject()->set_active(true);
-                GetPlaylistPath("", true);
-                list->data.clear();
-                for (auto it : playlists) {
-                    std::string listName = std::string(it.first).substr(CustomLevelPackPrefixID.length());
-                    list->data.emplace_back(QuestUI::CustomListTableData::CustomCellInfo{listName});
-                }
-                if (list && list->tableView) {
-                    list->tableView->ClearSelection();
-                    list->tableView->ReloadData();
-                    list->tableView->RefreshCellsContent();
+                    }));
                 }
             }, FileToSprite("InsertIcon"), "Insert to List");
         insertButton->get_transform()->SetAsLastSibling();
@@ -748,6 +752,10 @@ MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &GlobalNamespace::Standa
         deleteButtonImageView->set_color(UnityEngine::Color::get_white());
     if (deleteAndRemoveButtonImageView)
         deleteAndRemoveButtonImageView->set_color(UnityEngine::Color::get_white());
+    if (listModal)
+        listModal->get_gameObject()->set_active(false);
+    if (insertButton)
+        insertButton->set_interactable(true);
 }
 
 MAKE_HOOK_MATCH(StandardLevelDetailViewController_ShowContent, &GlobalNamespace::StandardLevelDetailViewController::ShowContent, void, GlobalNamespace::StandardLevelDetailViewController* self, ::GlobalNamespace::StandardLevelDetailViewController::ContentType contentType, ::StringW errorText, float downloadingProgress, ::StringW downloadingText)
