@@ -173,6 +173,8 @@ bool LoadFile(const std::string &path, rapidjson::Document &document) {
             throw std::invalid_argument("parsing error");
         if (!document.IsObject())
             throw std::invalid_argument("root isn't object");
+        if (document.GetObject()["playlistTitle"].GetType() != rapidjson::kStringType)
+            throw std::invalid_argument("root/playlistTitle not string");
         if (document.GetObject()["songs"].GetType() != rapidjson::kArrayType)
             throw std::invalid_argument("root/songs not array");
         success = true;
@@ -220,13 +222,13 @@ std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh
         }
         for (const auto& entry : std::filesystem::directory_iterator(playlistPath)) {
             if(!entry.is_directory()) {
+                rapidjson::Document document;
                 auto path = entry.path().string();
-                auto listOpt = PlaylistManager::ReadFromFile(path);
-                if(listOpt.has_value()) {
-                    auto list = listOpt.value();
-                    playlists[CustomLevelPackPrefixID + list.GetPlaylistTitle()] = path;
-                    INFO("LoadPlaylists %s : %s", list.GetPlaylistTitle().c_str(), path.c_str());
-                }
+                if (!LoadFile(path, document))
+                    continue;
+                const std::string playlistTitle = document.GetObject()["playlistTitle"].GetString();
+                playlists[CustomLevelPackPrefixID + playlistTitle] = path;
+                INFO("LoadPlaylists %s : %s", playlistTitle.c_str(), path.c_str());
             }
         }
     }
