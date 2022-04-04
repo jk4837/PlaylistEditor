@@ -701,7 +701,7 @@ static void createActionButton(UnityEngine::Transform *parent) {
         GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
         RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [] {
                 INFO("Success delete song");
-                RefreshAndStayList(SCROLL_ACTION::SCROLL_REMOVE_STAY);
+                RefreshAndStayList(IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
             }
         );
     };
@@ -723,7 +723,7 @@ static void createActionButton(UnityEngine::Transform *parent) {
             RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [] {
                     INFO("Success delete song");
                     UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_REMOVE);
-                    RefreshAndStayList(SCROLL_ACTION::SCROLL_REMOVE_STAY);
+                    RefreshAndStayList(IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
                 }
             );
         }, FileToSprite("DeleteAndRemoveIcon"), "Delete and Remove Song from List");
