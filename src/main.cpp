@@ -532,82 +532,25 @@ static void logPacks(::StringW lastCollectionName = "") {
 
 #define MakeDelegate(DelegateType, varName) (il2cpp_utils::MakeDelegate<DelegateType>(classof(DelegateType), varName))
 
-UnityEngine::UI::Button* CreateBaseButton(std::string_view name, UnityEngine::Transform* parent, std::string_view buttonTemplate)
+UnityEngine::UI::Button* CreateIconButton(std::string_view name, UnityEngine::Transform* parent, std::string_view buttonTemplate, UnityEngine::Vector2 anchoredPosition, UnityEngine::Vector2 sizeDelta, std::function<void(void)> onClick, UnityEngine::Sprite* icon, std::string_view hint)
 {
-    Il2CppString* templCS = il2cpp_utils::newcsstr(buttonTemplate.data());
-    auto btn = UnityEngine::Object::Instantiate((UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::UI::Button*>()).Last([&](UnityEngine::UI::Button* x) {
-        return x->get_name()->Equals(templCS);
-    }), parent, false);
+    assert(deleteButton);
+    auto btn = QuestUI::BeatSaberUI::CreateUIButton(parent, "", buttonTemplate, anchoredPosition, sizeDelta, onClick);
 
-    btn->set_name(il2cpp_utils::newcsstr(name.data()));
-    btn->set_interactable(true);
-    return btn;
-}
+    QuestUI::BeatSaberUI::AddHoverHint(btn->get_gameObject(), hint);
 
-void SetHoverHint(UnityEngine::Transform* button, std::string_view name, std::string_view text)
-{
-    auto hover = button->get_gameObject()->AddComponent<HMUI::HoverHint*>();
-    hover->set_text(text);
-    hover->set_name(name);
-    hover->dyn__hoverHintController() = UnityEngine::Resources::FindObjectsOfTypeAll<HMUI::HoverHintController*>().First();
-}
-
-UnityEngine::UI::Button* CreateIconButton(std::string_view name, UnityEngine::Transform* parent, std::string_view buttonTemplate, UnityEngine::Sprite* icon, std::string_view hint)
-{
-    auto btn = CreateBaseButton(name, parent, buttonTemplate);
-
-    SetHoverHint(btn->get_transform(), string_format("%s_hoverHintText", name.data()), hint);
-    btn->get_gameObject()->AddComponent<QuestUI::ExternalComponents*>()->Add(
-        btn->GetComponentsInChildren<UnityEngine::UI::LayoutGroup*>().First([](auto x) -> bool {
-        return x->get_gameObject()->get_name()->Equals("Content");
-    }));
+    UnityEngine::Object::Destroy(btn->get_transform()->Find("Underline")->get_gameObject());
 
     UnityEngine::Transform* contentTransform = btn->get_transform()->Find("Content");
     UnityEngine::Object::Destroy(contentTransform->Find("Text")->get_gameObject());
+    UnityEngine::Object::Destroy(contentTransform->GetComponent<UnityEngine::UI::LayoutElement*>());
+
     UnityEngine::UI::Image* iconImage = UnityEngine::GameObject::New_ctor("Icon")->AddComponent<HMUI::ImageView*>();
-    // idk what mat that is
-
-    auto orig = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::UI::Button*>().Last([&](UnityEngine::UI::Button* x) {
-        return x->get_name()->Equals(buttonTemplate.data());
-    });
-
-    iconImage->set_material(orig->get_gameObject()->GetComponentInChildren<HMUI::ImageView*>()->get_material());
+    iconImage->set_material(deleteButton->get_gameObject()->GetComponentInChildren<HMUI::ImageView*>()->get_material());
     iconImage->get_rectTransform()->SetParent(contentTransform, false);
     iconImage->get_rectTransform()->set_sizeDelta(UnityEngine::Vector2(10.0f, 10.0f));
     iconImage->set_sprite(icon);
     iconImage->set_preserveAspect(true);
-
-    if (iconImage)
-    {
-        // auto btnIcon = btn->get_gameObject()->AddComponent<SongBrowser::Components::ButtonIconImage*>();
-        // btnIcon->image = iconImage;
-
-    }
-
-    UnityEngine::Object::Destroy(btn->get_transform()->Find("Content")->GetComponent<UnityEngine::UI::LayoutElement*>());
-    btn->GetComponentsInChildren<UnityEngine::RectTransform*>().First([](auto x) -> bool {
-        return x->get_name()->Equals("Underline");
-    })->get_gameObject()->SetActive(false);
-
-    auto buttonSizeFitter = btn->get_gameObject()->AddComponent<UnityEngine::UI::ContentSizeFitter*>();
-    buttonSizeFitter->set_verticalFit(UnityEngine::UI::ContentSizeFitter::FitMode::Unconstrained);
-    buttonSizeFitter->set_horizontalFit(UnityEngine::UI::ContentSizeFitter::FitMode::Unconstrained);
-
-    btn->set_onClick(UnityEngine::UI::Button::ButtonClickedEvent::New_ctor());
-    return btn;
-}
-
-UnityEngine::UI::Button* CreateIconButton(std::string_view name, UnityEngine::Transform* parent, std::string_view buttonTemplate, UnityEngine::Vector2 anchoredPosition, UnityEngine::Vector2 sizeDelta, std::function<void(void)> onClick, UnityEngine::Sprite* icon, std::string_view hint)
-{
-    auto btn = CreateIconButton(name, parent, buttonTemplate, icon, hint);
-    auto rect = reinterpret_cast<UnityEngine::RectTransform*>(btn->get_transform());
-    rect->set_anchorMin(UnityEngine::Vector2(0.5f, 0.5f));
-    rect->set_anchorMax(UnityEngine::Vector2(0.5f, 0.5f));
-    rect->set_anchoredPosition(anchoredPosition);
-    rect->set_sizeDelta(sizeDelta);
-
-    if (onClick)
-        btn->get_onClick()->AddListener(MakeDelegate(UnityEngine::Events::UnityAction*, onClick));
 
     return btn;
 }
