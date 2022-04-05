@@ -35,12 +35,17 @@
 #include "codegen/include/HMUI/TableView_ScrollPositionType.hpp"
 #include "codegen/include/HMUI/ImageView.hpp"
 #include "codegen/include/System/Action.hpp"
+#include "codegen/include/System/Action_1.hpp"
+#include "codegen/include/System/Action_2.hpp"
+#include "codegen/include/System/Action_4.hpp"
 #include "playlistmanager/shared/PlaylistManager.hpp"
 #include "GlobalNamespace/AnnotatedBeatmapLevelCollectionsViewController.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSegmentedControlController.hpp"
 #include "GlobalNamespace/BeatmapDifficultySegmentedControlController.hpp"
 #include "GlobalNamespace/BeatmapLevelsModel.hpp"
+#include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
 #include "GlobalNamespace/CustomPreviewBeatmapLevel.hpp"
+#include "GlobalNamespace/IAnnotatedBeatmapLevelCollection.hpp"
 #include "GlobalNamespace/IBeatmapLevelCollection.hpp"
 #include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
 // #include "GlobalNamespace/IPlaylist.hpp"
@@ -53,6 +58,7 @@
 #include "GlobalNamespace/SelectLevelCategoryViewController.hpp"
 #include "GlobalNamespace/LoadingControl.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
+#include "GlobalNamespace/PartyFreePlayFlowCoordinator.hpp"
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
 #include "GlobalNamespace/StandardLevelDetailViewController.hpp"
 
@@ -69,7 +75,7 @@ const std::string CustomLevelPrefixID = "custom_level_";
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
 // static PlaylistEditor::Toast *Toast;
 // static CustomPreviewBeatmapLevel *selectedlevel = nullptr;
-static GlobalNamespace::LevelSelectionFlowCoordinator *LevelSelectionFlowCoordinator = nullptr;
+static HMUI::FlowCoordinator* FlowCoordinator = nullptr;
 static GlobalNamespace::LevelSelectionNavigationController *LevelSelectionNavigationController = nullptr;
 static GlobalNamespace::LevelFilteringNavigationController *LevelFilteringNavigationController = nullptr;
 static GlobalNamespace::LevelCollectionNavigationController *LevelCollectionNavigationController = nullptr;
@@ -478,50 +484,171 @@ static void SelectLevelCollection(const int lastCollectionIdx, const ::StringW &
     }
 }
 
+void resetUI()
+{
+    if (deleteButtonImageView)
+        deleteButtonImageView->set_color(UnityEngine::Color::get_white());
+    if (deleteAndRemoveButtonImageView)
+        deleteAndRemoveButtonImageView->set_color(UnityEngine::Color::get_white());
+    if (moveUpButton)
+        moveUpButton->set_interactable(true);
+    if (moveUpButtonImageView)
+        moveUpButtonImageView->set_color(UnityEngine::Color::get_white());
+    if (moveDownButton)
+        moveDownButton->set_interactable(true);
+    if (moveDownButtonImageView)
+        moveDownButtonImageView->set_color(UnityEngine::Color::get_white());
+    if (listModal)
+        listModal->get_gameObject()->set_active(false);
+    if (moveDownButton)
+        moveDownButton->set_interactable(true);
+    if (createListInput)
+        createListInput->get_gameObject()->set_active(false);
+    if (deleteListButton)
+        deleteListButton->set_interactable(true);
+    if (deleteListButtonImageView)
+        deleteListButtonImageView->set_color(UnityEngine::Color::get_white());
+}
+
+void adjustUI(bool forceDisable = false) // use forceDisable, casue don't know how to decide if now at main menu
+{
+    bool atSoloOrPartyPlay = (il2cpp_utils::try_cast<GlobalNamespace::SoloFreePlayFlowCoordinator>(FlowCoordinator) ||
+                              il2cpp_utils::try_cast<GlobalNamespace::PartyFreePlayFlowCoordinator>(FlowCoordinator)) ? true : false;
+    bool atCustomCategory = LevelFilteringNavigationController &&
+                            (GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::CustomSongs == LevelFilteringNavigationController->get_selectedLevelCategory());
+    bool atCustomPack = IsSelectedCustomPack();
+    bool atCustomLevel = LevelCollectionTableView && LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel() &&
+                        il2cpp_functions::class_is_assignable_from(classof(GlobalNamespace::CustomPreviewBeatmapLevel*), il2cpp_functions::object_get_class(reinterpret_cast<Il2CppObject*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel())));
+    resetUI();
+    // if (deleteButton) {  // manage by songloader
+    //     deleteButton->get_gameObject()->set_active(true);
+    // }
+    if (deleteAndRemoveButton)
+        deleteAndRemoveButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomLevel);
+    if (removeButton)
+        removeButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomLevel);
+    if (insertButton)
+        insertButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomLevel);
+
+    if (moveUpButton) {
+        moveUpButton->get_gameObject()->set_active(!forceDisable && atCustomLevel);
+        if (!atCustomPack) {
+            moveUpButton->set_interactable(false);
+            if (moveUpButtonImageView)
+                moveUpButtonImageView->set_color(UnityEngine::Color::get_gray());
+        }
+    }
+    if (moveDownButton) {
+        moveDownButton->get_gameObject()->set_active(!forceDisable && atCustomLevel);
+        if (!atCustomPack) {
+            moveDownButton->set_interactable(false);
+            if (moveDownButtonImageView)
+                moveDownButtonImageView->set_color(UnityEngine::Color::get_gray());
+        }
+    }
+    if (createListButton)
+        createListButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomCategory);
+    if (deleteListButton) {
+        deleteListButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomCategory);
+        if (!atCustomPack) {
+            deleteListButton->set_interactable(false);
+            if (deleteListButtonImageView)
+                deleteListButtonImageView->set_color(UnityEngine::Color::get_gray());
+        }
+    }
+}
+
+template <class T, typename Method>
+static T MakeDelegate(Method fun)
+{
+    return il2cpp_utils::MakeDelegate<T>(classof(T), fun);
+}
+
 MAKE_HOOK_MATCH(FlowCoordinator_PresentFlowCoordinator, &HMUI::FlowCoordinator::PresentFlowCoordinator, void, HMUI::FlowCoordinator* self, HMUI::FlowCoordinator* flowCoordinator, System::Action* finishedCallback, HMUI::ViewController::AnimationDirection animationDirection, bool immediately, bool replaceTopViewController)
 {
     FlowCoordinator_PresentFlowCoordinator(self, flowCoordinator, finishedCallback, animationDirection, immediately, replaceTopViewController);
-    if (il2cpp_utils::try_cast<GlobalNamespace::SoloFreePlayFlowCoordinator>(flowCoordinator))
-    {
-        INFO("Initializing PlayListEditor for Single Player Mode");
-        LevelSelectionFlowCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::SoloFreePlayFlowCoordinator *>().Last();
-        // gather flow coordinator elements
-        LevelSelectionNavigationController = LevelSelectionFlowCoordinator->dyn_levelSelectionNavigationController();
-        INFO("Acquired LevelSelectionNavigationController [%d]", LevelSelectionNavigationController->GetInstanceID());
+    FlowCoordinator = flowCoordinator;
+    if (il2cpp_utils::try_cast<GlobalNamespace::PartyFreePlayFlowCoordinator>(FlowCoordinator)) {
+        INFO("Initializing PlayListEditor for Party Mode");
+    } else if (il2cpp_utils::try_cast<GlobalNamespace::SoloFreePlayFlowCoordinator>(FlowCoordinator)) {
+        INFO("Initializing PlayListEditor for Solo Mode");
+    } else
+        return;
+    auto LevelSelectionFlowCoordinator = il2cpp_utils::cast<GlobalNamespace::LevelSelectionFlowCoordinator>(flowCoordinator);
+    // gather flow coordinator elements
+    LevelSelectionNavigationController = LevelSelectionFlowCoordinator->dyn_levelSelectionNavigationController();
+    INFO("Acquired LevelSelectionNavigationController [%d]", LevelSelectionNavigationController->GetInstanceID());
 
-        LevelFilteringNavigationController = LevelSelectionNavigationController->dyn__levelFilteringNavigationController();
-        INFO("Acquired LevelFilteringNavigationController [%d]", LevelFilteringNavigationController->GetInstanceID());
+    LevelFilteringNavigationController = LevelSelectionNavigationController->dyn__levelFilteringNavigationController();
+    INFO("Acquired LevelFilteringNavigationController [%d]", LevelFilteringNavigationController->GetInstanceID());
 
-        LevelCollectionNavigationController = LevelSelectionNavigationController->dyn__levelCollectionNavigationController();
-        INFO("Acquired LevelCollectionNavigationController [%d]", LevelCollectionNavigationController->GetInstanceID());
+    LevelCollectionNavigationController = LevelSelectionNavigationController->dyn__levelCollectionNavigationController();
+    INFO("Acquired LevelCollectionNavigationController [%d]", LevelCollectionNavigationController->GetInstanceID());
 
-        LevelCollectionViewController = LevelCollectionNavigationController->dyn__levelCollectionViewController();
-        INFO("Acquired LevelCollectionViewController [%d]", LevelCollectionViewController->GetInstanceID());
+    LevelCollectionViewController = LevelCollectionNavigationController->dyn__levelCollectionViewController();
+    INFO("Acquired LevelCollectionViewController [%d]", LevelCollectionViewController->GetInstanceID());
 
-        LevelDetailViewController = LevelCollectionNavigationController->dyn__levelDetailViewController();
-        INFO("Acquired LevelDetailViewController [%d]", LevelDetailViewController->GetInstanceID());
+    LevelDetailViewController = LevelCollectionNavigationController->dyn__levelDetailViewController();
+    INFO("Acquired LevelDetailViewController [%d]", LevelDetailViewController->GetInstanceID());
 
-        LevelCollectionTableView = LevelCollectionViewController->dyn__levelCollectionTableView();
-        INFO("Acquired LevelPackLevelsTableView [%d]", LevelCollectionTableView->GetInstanceID());
+    LevelCollectionTableView = LevelCollectionViewController->dyn__levelCollectionTableView();
+    INFO("Acquired LevelPackLevelsTableView [%d]", LevelCollectionTableView->GetInstanceID());
 
-        StandardLevelDetailView = LevelDetailViewController->dyn__standardLevelDetailView();
-        INFO("Acquired StandardLevelDetailView [%d]", StandardLevelDetailView->GetInstanceID());
+    StandardLevelDetailView = LevelDetailViewController->dyn__standardLevelDetailView();
+    INFO("Acquired StandardLevelDetailView [%d]", StandardLevelDetailView->GetInstanceID());
 
-        BeatmapCharacteristicSelectionViewController = StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController();
-        INFO("Acquired BeatmapCharacteristicSegmentedControlController [%d]", BeatmapCharacteristicSelectionViewController->GetInstanceID());
+    BeatmapCharacteristicSelectionViewController = StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController();
+    INFO("Acquired BeatmapCharacteristicSegmentedControlController [%d]", BeatmapCharacteristicSelectionViewController->GetInstanceID());
 
-        LevelDifficultyViewController = StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController();
-        INFO("Acquired BeatmapDifficultySegmentedControlController [%d]", LevelDifficultyViewController->GetInstanceID());
+    LevelDifficultyViewController = StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController();
+    INFO("Acquired BeatmapDifficultySegmentedControlController [%d]", LevelDifficultyViewController->GetInstanceID());
 
-        AnnotatedBeatmapLevelCollectionsViewController = LevelFilteringNavigationController->dyn__annotatedBeatmapLevelCollectionsViewController();
-        INFO("Acquired AnnotatedBeatmapLevelCollectionsViewController from LevelFilteringNavigationController [%d]", AnnotatedBeatmapLevelCollectionsViewController->GetInstanceID());
+    AnnotatedBeatmapLevelCollectionsViewController = LevelFilteringNavigationController->dyn__annotatedBeatmapLevelCollectionsViewController();
+    INFO("Acquired AnnotatedBeatmapLevelCollectionsViewController from LevelFilteringNavigationController [%d]", AnnotatedBeatmapLevelCollectionsViewController->GetInstanceID());
 
-        LevelCategoryViewController = LevelFilteringNavigationController->dyn__selectLevelCategoryViewController();
-        INFO("Acquired LevelCategoryViewController from LevelFilteringNavigationController [%d]", LevelCategoryViewController->GetInstanceID());
+    LevelCategoryViewController = LevelFilteringNavigationController->dyn__selectLevelCategoryViewController();
+    INFO("Acquired LevelCategoryViewController from LevelFilteringNavigationController [%d]", LevelCategoryViewController->GetInstanceID());
 
-        BeatmapLevelsModel = LevelFilteringNavigationController->dyn__beatmapLevelsModel();
-        INFO("Acquired BeatmapLevelsModel [%d]", BeatmapLevelsModel->GetInstanceID());
+    BeatmapLevelsModel = LevelFilteringNavigationController->dyn__beatmapLevelsModel();
+    INFO("Acquired BeatmapLevelsModel [%d]", BeatmapLevelsModel->GetInstanceID());
+
+    if (!LevelCategoryViewController->dyn_didSelectLevelCategoryEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
+        INFO("Add event LevelCategoryViewController->dyn_didSelectLevelCategoryEvent()");
+        std::function<void(GlobalNamespace::SelectLevelCategoryViewController*, GlobalNamespace::SelectLevelCategoryViewController::LevelCategory)> didSelectLevelCategoryEventFun = [] (GlobalNamespace::SelectLevelCategoryViewController*, GlobalNamespace::SelectLevelCategoryViewController::LevelCategory) {
+            INFO("LevelCategoryViewController SelectLevelCategoryEvent");
+            adjustUI();
+        };
+        LevelCategoryViewController->add_didSelectLevelCategoryEvent(MakeDelegate<System::Action_2<GlobalNamespace::SelectLevelCategoryViewController*, GlobalNamespace::SelectLevelCategoryViewController::LevelCategory>*>((didSelectLevelCategoryEventFun)));
     }
+
+    if (!LevelCollectionNavigationController->dyn_didSelectLevelPackEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
+        INFO("Add event LevelCollectionNavigationController->dyn_didSelectLevelPackEvent()");
+        std::function<void(GlobalNamespace::LevelCollectionNavigationController*, GlobalNamespace::IBeatmapLevelPack*)> didSelectLevelPackEventFun = [] (GlobalNamespace::LevelCollectionNavigationController*, GlobalNamespace::IBeatmapLevelPack*) {
+            INFO("LevelCollectionNavigationController SelectLevelPackEvent"); // select to level list header
+            adjustUI();
+        };
+        LevelCollectionNavigationController->add_didSelectLevelPackEvent(MakeDelegate<System::Action_2<GlobalNamespace::LevelCollectionNavigationController*, GlobalNamespace::IBeatmapLevelPack*>*>((didSelectLevelPackEventFun)));
+    }
+
+    if (!AnnotatedBeatmapLevelCollectionsViewController->dyn_didOpenBeatmapLevelCollectionsEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
+        INFO("Add event AnnotatedBeatmapLevelCollectionsViewController->dyn_didOpenBeatmapLevelCollectionsEvent()");
+        std::function<void()> didOpenBeatmapLevelCollectionsEventFun = [] () {
+            INFO("AnnotatedBeatmapLevelCollectionsViewController OpenBeatmapLevelCollectionsEvent");
+            adjustUI();
+        };
+        AnnotatedBeatmapLevelCollectionsViewController->add_didOpenBeatmapLevelCollectionsEvent(MakeDelegate<System::Action*>(didOpenBeatmapLevelCollectionsEventFun));
+    }
+
+    if (!AnnotatedBeatmapLevelCollectionsViewController->dyn_didSelectAnnotatedBeatmapLevelCollectionEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
+        INFO("Add event AnnotatedBeatmapLevelCollectionsViewController->dyn_didSelectAnnotatedBeatmapLevelCollectionEvent()");
+        std::function<void(GlobalNamespace::IAnnotatedBeatmapLevelCollection*)> didSelectAnnotatedBeatmapLevelCollectionEventFun = [] (GlobalNamespace::IAnnotatedBeatmapLevelCollection*) {
+            INFO("AnnotatedBeatmapLevelCollectionsViewController SelectAnnotatedBeatmapLevelCollectionEvent");
+            adjustUI();
+        };
+        AnnotatedBeatmapLevelCollectionsViewController->add_didSelectAnnotatedBeatmapLevelCollectionEvent(MakeDelegate<System::Action_1<GlobalNamespace::IAnnotatedBeatmapLevelCollection*>*>((didSelectAnnotatedBeatmapLevelCollectionEventFun)));
+    }
+
+    adjustUI();
 }
 
 template <class T>
@@ -812,73 +939,33 @@ static void createActionButton(UnityEngine::Transform *parent) {
     createListActionButton();
 }
 
-void adjustUI(const bool customLevel)
-{
-    if (!customLevel) {
-        if (deleteButton)
-            deleteButton->get_gameObject()->set_active(false);
-        if (deleteAndRemoveButton)
-            deleteAndRemoveButton->get_gameObject()->set_active(false);
-        if (removeButton)
-            removeButton->get_gameObject()->set_active(false);
-        if (insertButton) {
-            insertButton->get_gameObject()->set_active(false);
-            if (listModal)
-                listModal->get_gameObject()->set_active(false);
-        }
-        if (moveUpButton)
-            moveUpButton->get_gameObject()->set_active(false);
-        if (moveDownButton)
-            moveDownButton->get_gameObject()->set_active(false);
-    } else {
-        if (deleteButton) {
-            deleteButton->get_gameObject()->set_active(true);
-            if (deleteButtonImageView)
-                deleteButtonImageView->set_color(UnityEngine::Color::get_white());
-        }
-        if (deleteAndRemoveButton) {
-            deleteAndRemoveButton->get_gameObject()->set_active(true);
-            if (deleteAndRemoveButtonImageView)
-                deleteAndRemoveButtonImageView->set_color(UnityEngine::Color::get_white());
-        }
-        if (removeButton)
-            removeButton->get_gameObject()->set_active(true);
-        if (insertButton) {
-            insertButton->get_gameObject()->set_active(true);
-            if (listModal)
-                listModal->get_gameObject()->set_active(false);
-        }
-        if (moveUpButton) {
-            moveUpButton->get_gameObject()->set_active(true);
-            moveUpButton->set_interactable(IsSelectedCustomPack());
-            if (moveUpButtonImageView)
-                moveUpButtonImageView->set_color(IsSelectedCustomPack() ? UnityEngine::Color::get_white() : UnityEngine::Color::get_gray());
-        }
-        if (moveDownButton) {
-            moveDownButton->get_gameObject()->set_active(true);
-            moveDownButton->set_interactable(IsSelectedCustomPack());
-            if (moveDownButtonImageView)
-                moveDownButtonImageView->set_color(IsSelectedCustomPack() ? UnityEngine::Color::get_white() : UnityEngine::Color::get_gray());
-        }
-    }
-}
-
 MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &GlobalNamespace::StandardLevelDetailView::RefreshContent, void, GlobalNamespace::StandardLevelDetailView* self)
 {
     StandardLevelDetailView_RefreshContent(self);
-    bool customLevel = self->dyn__level() && il2cpp_functions::class_is_assignable_from(classof(GlobalNamespace::CustomPreviewBeatmapLevel*), il2cpp_functions::object_get_class(reinterpret_cast<Il2CppObject*>(self->dyn__level())));
-    adjustUI(customLevel);
+    adjustUI();
 }
 
-MAKE_HOOK_MATCH(StandardLevelDetailViewController_ShowContent, &GlobalNamespace::StandardLevelDetailViewController::ShowContent, void, GlobalNamespace::StandardLevelDetailViewController* self, ::GlobalNamespace::StandardLevelDetailViewController::ContentType contentType, ::StringW errorText, float downloadingProgress, ::StringW downloadingText)
+MAKE_HOOK_MATCH(StandardLevelDetailViewController_ShowContent, &GlobalNamespace::StandardLevelDetailViewController::ShowContent, void, GlobalNamespace::StandardLevelDetailViewController* self, GlobalNamespace::StandardLevelDetailViewController::ContentType contentType, ::StringW errorText, float downloadingProgress, ::StringW downloadingText)
 {
     StandardLevelDetailViewController_ShowContent(self, contentType, errorText, downloadingProgress, downloadingText);
 
     if (!deleteButton) {
         createActionButton(self->dyn__standardLevelDetailView()->get_practiceButton()->get_transform()->get_parent());
-        bool customLevel = self->dyn__previewBeatmapLevel() && il2cpp_functions::class_is_assignable_from(classof(GlobalNamespace::CustomPreviewBeatmapLevel*), il2cpp_functions::object_get_class(reinterpret_cast<Il2CppObject*>(self->dyn__previewBeatmapLevel())));
-        adjustUI(customLevel);
+        adjustUI();
     }
+}
+
+#include "codegen/include/GlobalNamespace/MainFlowCoordinator.hpp"
+
+MAKE_HOOK_MATCH(MainFlowCoordinator_DidActivate, &GlobalNamespace::MainFlowCoordinator::DidActivate, void, GlobalNamespace::MainFlowCoordinator* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+{
+    INFO("MainFlowCoordinator_DidActivate");
+    MainFlowCoordinator_DidActivate(self, firstActivation, addedToHierarchy, screenSystemEnabling);
+    adjustUI(true);
+
+    // auto mainMenuViewController = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::MainMenuViewController *>().First();
+    // if (mainMenuViewController)
+    //     mainMenuViewController->dyn__soloButton()->Press();
 }
 
 // Called at the early stages of game loading
@@ -907,6 +994,7 @@ extern "C" void load() {
     );
 
     INFO("Installing hooks...");
+    INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), MainFlowCoordinator_DidActivate);
     INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), StandardLevelDetailViewController_ShowContent);
     INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), StandardLevelDetailView_RefreshContent);
     INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), FlowCoordinator_PresentFlowCoordinator);
