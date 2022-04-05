@@ -651,28 +651,28 @@ HMUI::InputFieldView* CreateStringInput(UnityEngine::Transform* parent, StringW 
 }
 
 static void createListActionButton() {
-    auto screenContainer = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [](auto x) {
-        return x->get_name()->Equals("ScreenContainer");
-    });
-    createListButton = CreateIconButton("CreateListButton", screenContainer->get_transform(), "PracticeButton",
-                                        UnityEngine::Vector2(69.0f, 27.0f), UnityEngine::Vector2(10.0f, 7.0f), [screenContainer] () {
-            if (!createListInput)
+    createListButton = CreateIconButton("CreateListButton", LevelFilteringNavigationController->get_transform(), "PracticeButton",
+                                        UnityEngine::Vector2(69.0f, -3.0f), UnityEngine::Vector2(10.0f, 7.0f), [] () {
+            if (!createListInput) {
+                INFO("0 createListInput");
+                auto screenContainer = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [](auto x) {
+                    return x->get_name()->Equals("ScreenContainer");
+                });
                 createListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
                                     UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [] (StringW value) {
                                         INFO("Enter %s", std::string(value).c_str());
                                         if (CreateFile(value))
                                             RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
                                         createListInput->get_gameObject()->set_active(false);
+                                        createListInput->SetText("");
                 });
-            if (createListInput->get_gameObject()->get_active()) {
-                createListInput->get_gameObject()->set_active(false);
+                createListInput->get_gameObject()->set_active(true);
                 return;
             }
-            createListInput->SetText("");
-            createListInput->get_gameObject()->set_active(true);
+            createListInput->get_gameObject()->set_active(!createListInput->get_gameObject()->get_active());
         }, FileToSprite("InsertIcon"), "Create List");
-    deleteListButton = CreateIconButton("DeleteListButton", screenContainer->get_transform(), "PracticeButton",
-                                        UnityEngine::Vector2(69.0f, 33.0f), UnityEngine::Vector2(10.0f, 7.0f), [] () {
+    deleteListButton = CreateIconButton("DeleteListButton", LevelFilteringNavigationController->get_transform(), "PracticeButton",
+                                        UnityEngine::Vector2(69.0f, 3.0f), UnityEngine::Vector2(10.0f, 7.0f), [] () {
                             if (UnityEngine::Color::get_red() != deleteListButtonImageView->get_color()) {
                                 deleteListButtonImageView->set_color(UnityEngine::Color::get_red());
                                 return;
@@ -684,6 +684,7 @@ static void createListActionButton() {
     deleteListButtonImageView = deleteListButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
         return "Icon" == x->get_name();
     });
+    deleteListButtonImageView->get_transform()->SetAsLastSibling();
 }
 
 static void createActionButton(UnityEngine::Transform *parent) {
