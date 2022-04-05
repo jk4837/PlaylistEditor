@@ -631,16 +631,8 @@ UnityEngine::UI::Button* CreateIconButton(std::string_view name, UnityEngine::Tr
 
 static UnityEngine::Sprite* FileToSprite(const std::string_view &image_name)
 {
-    std::string path = string_format("/sdcard/ModData/com.beatgames.beatsaber/Mods/%s/Icons/%s.png", modInfo.id.c_str(),image_name.data());
-    std::ifstream instream(path, std::ios::in | std::ios::binary);
-    std::vector<uint8_t> data((std::istreambuf_iterator<char>(instream)), std::istreambuf_iterator<char>());
-    Array<uint8_t>* bytes = il2cpp_utils::vectorToArray(data);
-    UnityEngine::Texture2D* texture = UnityEngine::Texture2D::New_ctor(0, 0, UnityEngine::TextureFormat::RGBA32, false, false);
-    if (UnityEngine::ImageConversion::LoadImage(texture, bytes, false)) {
-        texture->set_wrapMode(UnityEngine::TextureWrapMode::Clamp);
-        return UnityEngine::Sprite::Create(texture, UnityEngine::Rect(0.0f, 0.0f, (float)texture->get_width(), (float)texture->get_height()), UnityEngine::Vector2(0.5f,0.5f), 100.0f, 1u, UnityEngine::SpriteMeshType::Tight, UnityEngine::Vector4(0.0f, 0.0f, 0.0f, 0.0f), false);
-    }
-    return nullptr;
+    std::string path = string_format("/sdcard/ModData/com.beatgames.beatsaber/Mods/%s/Icons/%s.png", modInfo.id.c_str(), image_name.data());
+    return QuestUI::BeatSaberUI::FileToSprite(path);
 }
 
 template <class T, typename Method>
