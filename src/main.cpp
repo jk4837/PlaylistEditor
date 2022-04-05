@@ -335,7 +335,7 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::strin
 
 static bool IsSelectedCustomPack()
 {
-    return LevelFilteringNavigationController && LevelCollectionNavigationController &&
+    return LevelFilteringNavigationController && LevelCollectionNavigationController && LevelCollectionNavigationController->dyn__levelPack() &&
             GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::CustomSongs == LevelFilteringNavigationController->get_selectedLevelCategory() &&
             CustomLevelID != LevelCollectionNavigationController->dyn__levelPack()->get_packID();
 }
@@ -346,7 +346,7 @@ static const std::string GetSelectedPackID()
 }
 
 static void RefreshAndStayList(const SCROLL_ACTION act) {
-    const auto lastCollectionIdx = AnnotatedBeatmapLevelCollectionsViewController->dyn__selectedItemIndex();
+    const auto lastCollectionName = AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection() ? AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_collectionName() : "";
     const auto lastScrollPos = LevelCollectionTableView->dyn__tableView()->get_scrollView()->dyn__destinationPos();
     auto nextScrollPos = lastScrollPos;
     const int selectedRow = LevelCollectionTableView->dyn__selectedRow();
