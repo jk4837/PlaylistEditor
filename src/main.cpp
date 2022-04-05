@@ -1,75 +1,49 @@
-#include <map>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <fstream>
 
-#include "TMPro/TextMeshProUGUI.hpp"
-#include "UnityEngine/Events/UnityAction.hpp"
-#include "UnityEngine/Object.hpp"
-#include "UnityEngine/GameObject.hpp"
-#include "UnityEngine/Resources.hpp"
-#include "UnityEngine/Transform.hpp"
-#include "UnityEngine/Material.hpp"
-#include "UnityEngine/Texture2D.hpp"
-#include "UnityEngine/TextureWrapMode.hpp"
-#include "UnityEngine/SpriteMeshType.hpp"
-#include "UnityEngine/ImageConversion.hpp"
-#include "UnityEngine/UI/Button.hpp"
-#include "UnityEngine/UI/Button_ButtonClickedEvent.hpp"
-#include "UnityEngine/UI/ContentSizeFitter.hpp"
-#include "UnityEngine/UI/LayoutElement.hpp"
-#include "UnityEngine/UI/LayoutGroup.hpp"
-#include "UnityEngine/UI/Image.hpp"
-#include "questui/shared/BeatSaberUI.hpp"
-#include "questui/shared/CustomTypes/Components/ExternalComponents.hpp"
-#include "questui/shared/CustomTypes/Components/ClickableText.hpp"
-#include "codegen/include/HMUI/HoverHintController.hpp"
-#include "codegen/include/HMUI/ViewController_AnimationDirection.hpp"
-#include "codegen/include/HMUI/ScrollView.hpp"
-#include "codegen/include/HMUI/TableView.hpp"
-#include "codegen/include/HMUI/TableView_ScrollPositionType.hpp"
-#include "codegen/include/HMUI/ImageView.hpp"
-#include "codegen/include/System/Action.hpp"
-#include "codegen/include/System/Action_1.hpp"
-#include "codegen/include/System/Action_2.hpp"
-#include "codegen/include/System/Action_4.hpp"
-#include "playlistmanager/shared/PlaylistManager.hpp"
 #include "GlobalNamespace/AnnotatedBeatmapLevelCollectionsViewController.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSegmentedControlController.hpp"
-#include "GlobalNamespace/BeatmapDifficultySegmentedControlController.hpp"
-#include "GlobalNamespace/BeatmapLevelsModel.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
+#include "GlobalNamespace/BeatmapDifficultySegmentedControlController.hpp"
 #include "GlobalNamespace/CustomPreviewBeatmapLevel.hpp"
 #include "GlobalNamespace/IAnnotatedBeatmapLevelCollection.hpp"
 #include "GlobalNamespace/IBeatmapLevelCollection.hpp"
-#include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
-// #include "GlobalNamespace/IPlaylist.hpp"
 #include "GlobalNamespace/LevelCollectionNavigationController.hpp"
 #include "GlobalNamespace/LevelCollectionTableView.hpp"
 #include "GlobalNamespace/LevelCollectionViewController.hpp"
+#include "GlobalNamespace/LevelFilteringNavigationController.hpp"
 #include "GlobalNamespace/LevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelSelectionNavigationController.hpp"
-#include "GlobalNamespace/LevelFilteringNavigationController.hpp"
-#include "GlobalNamespace/SelectLevelCategoryViewController.hpp"
-#include "GlobalNamespace/LoadingControl.hpp"
-#include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
 #include "GlobalNamespace/PartyFreePlayFlowCoordinator.hpp"
+#include "GlobalNamespace/SelectLevelCategoryViewController.hpp"
+#include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
 #include "GlobalNamespace/StandardLevelDetailViewController.hpp"
+#include "HMUI/ImageView.hpp"
+#include "HMUI/ScrollView.hpp"
+#include "HMUI/TableView.hpp"
+#include "HMUI/ViewController_AnimationDirection.hpp"
+#include "System/Action_1.hpp"
+#include "System/Action_2.hpp"
+#include "System/Action_4.hpp"
+#include "System/Action.hpp"
+#include "UnityEngine/GameObject.hpp"
+#include "UnityEngine/Resources.hpp"
+#include "UnityEngine/Transform.hpp"
+#include "UnityEngine/UI/Button.hpp"
+#include "UnityEngine/UI/Image.hpp"
+#include "playlistmanager/shared/PlaylistManager.hpp"
+#include "questui/shared/BeatSaberUI.hpp"
+#include "questui/shared/CustomTypes/Components/ClickableText.hpp"
+#include "questui/shared/CustomTypes/Components/ExternalComponents.hpp"
 
 #include "main.hpp"
-#include "logging.hpp"
+#include "CustomTypes/DoubleClickIconButton.hpp"
 #include "CustomTypes/Toast.hpp"
+#include "logging.hpp"
+#include "Utils/FileUtils.hpp"
+#include "Utils/UIUtils.hpp"
+#include "Utils/Utils.hpp"
 
-const std::string CustomLevelPackPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/PlaylistManager/Playlists/";
-const std::string CustomLevelPackPrefixID = "custom_levelPack_";
-const std::string CustomLevelID = "custom_levelPack_CustomLevels";
-const std::string CustomLevelPrefixID = "custom_level_";
+using namespace PlaylistEditor::Utils;
 
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
 // static CustomPreviewBeatmapLevel *selectedlevel = nullptr;
@@ -78,26 +52,20 @@ static GlobalNamespace::LevelSelectionNavigationController *LevelSelectionNaviga
 static GlobalNamespace::LevelFilteringNavigationController *LevelFilteringNavigationController = nullptr;
 static GlobalNamespace::LevelCollectionNavigationController *LevelCollectionNavigationController = nullptr;
 static GlobalNamespace::SelectLevelCategoryViewController *LevelCategoryViewController = nullptr;
-static GlobalNamespace::BeatmapLevelsModel* BeatmapLevelsModel = nullptr;
 static GlobalNamespace::LevelCollectionViewController *LevelCollectionViewController = nullptr;
 static GlobalNamespace::LevelCollectionTableView *LevelCollectionTableView = nullptr;
 static GlobalNamespace::StandardLevelDetailViewController *LevelDetailViewController = nullptr;
 static GlobalNamespace::StandardLevelDetailView *StandardLevelDetailView = nullptr;
-static GlobalNamespace::BeatmapDifficultySegmentedControlController *LevelDifficultyViewController = nullptr;
 static GlobalNamespace::BeatmapCharacteristicSegmentedControlController *BeatmapCharacteristicSelectionViewController = nullptr;
 static GlobalNamespace::AnnotatedBeatmapLevelCollectionsViewController *AnnotatedBeatmapLevelCollectionsViewController = nullptr;
 
-std::map<::StringW, std::string> playlists;
 static UnityEngine::UI::Button *createListButton = nullptr;
-HMUI::InputFieldView* createListInput = nullptr;
-static UnityEngine::UI::Button *deleteListButton = nullptr;
-static HMUI::ImageView *deleteListButtonImageView = nullptr;
-static UnityEngine::UI::Button *deleteButton = nullptr;
-static HMUI::ImageView *deleteButtonImageView = nullptr;
-static HMUI::ImageView *deleteAndRemoveButtonImageView = nullptr;
+static HMUI::InputFieldView* createListInput = nullptr;
+static PlaylistEditor::DoubleClickIconButton *deleteListButton = nullptr;
+static PlaylistEditor::DoubleClickIconButton *deleteButton = nullptr;
 static UnityEngine::UI::Button *removeButton = nullptr;
 static UnityEngine::UI::Button *insertButton = nullptr;
-static UnityEngine::UI::Button *deleteAndRemoveButton = nullptr;
+static PlaylistEditor::DoubleClickIconButton *deleteAndRemoveButton = nullptr;
 static UnityEngine::UI::Button *moveUpButton = nullptr;
 static HMUI::ImageView *moveUpButtonImageView = nullptr;
 static UnityEngine::UI::Button *moveDownButton = nullptr;
@@ -113,231 +81,21 @@ Configuration& getConfig() {
     return config;
 }
 
-template <class T>
-constexpr ArrayW<T> listToArrayW(::System::Collections::Generic::IReadOnlyList_1<T>* list) {
-    return ArrayW<T>(reinterpret_cast<Array<T>*>(list));
-}
-
-typedef enum LIST_ACTION {
-    ITEM_INSERT, ITEM_REMOVE, ITEM_MOVE_UP, ITEM_MOVE_DOWN
-} LIST_ACTION_T;
-
 typedef enum SCROLL_ACTION {
     NO_STAY, SCROLL_STAY, SCROLL_REMOVE_STAY, SCROLL_MOVE_UP, SCROLL_MOVE_DOWN
 } MOVE_ACTION_T;
-
-static std::string rapidjsonToString(rapidjson::Document &document) {
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    document.Accept(writer);
-    return std::string(buffer.GetString());
-}
-
-bool WriteFile(const std::string &path, rapidjson::Document &document) {
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-
-    document.Accept(writer);
-    if (!writefile(path, buffer.GetString())) {
-        ERROR("Failed to write file %s", path.data());
-        return false;
-    }
-    return true;
-}
-
-bool LoadFile(const std::string &path, rapidjson::Document &document) {
-    bool success = false;
-    try {
-        if(!fileexists(path))
-            return false;
-        auto json = readfile(path);
-        document.Parse(json);
-        if (document.HasParseError())
-            throw std::invalid_argument("parsing error");
-        if (!document.IsObject())
-            throw std::invalid_argument("root isn't object");
-        if (document.GetObject()["playlistTitle"].GetType() != rapidjson::kStringType)
-            throw std::invalid_argument("root/playlistTitle not string");
-        if (document.GetObject()["songs"].GetType() != rapidjson::kArrayType)
-            throw std::invalid_argument("root/songs not array");
-        success = true;
-    } catch (const std::exception &e) {
-        PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
-        ERROR("Error loading playlist %s: %s", path.data(), e.what());
-    }
-    return success;
-}
-
-bool FindSongIdx(rapidjson::Document &document, const std::string &selectedLevelID, int &idx) {
-    const auto selectedHash = selectedLevelID.substr(CustomLevelPrefixID.length());
-    try {
-        const auto &songs = document.GetObject()["songs"].GetArray();
-        for (rapidjson::SizeType i = 0; i < songs.Size(); i++) {
-            if (!songs[i].IsObject())
-                throw std::invalid_argument("invalid song object");
-            if (!songs[i].HasMember("hash") || !songs[i]["hash"].IsString())
-                throw std::invalid_argument("invalid hash in song object");
-            if (0 != strcasecmp(songs[i]["hash"].GetString(), selectedHash.c_str()))
-                continue;
-            idx = i;
-            return true;
-        }
-    } catch (const std::exception &e) {
-        PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
-        ERROR("Error parsing playlist: %s", e.what());
-    }
-    return false;
-}
-
-std::string GetPlaylistPath(const ::StringW &listID = "", const bool fullRefresh = false) {
-    if (CustomLevelID == listID)
-        return "";
-    if (fullRefresh)
-        playlists.clear();
-    if (!playlists.contains(listID)) {
-        INFO("Don't have playlist %s, reload all", std::string(listID).c_str());
-        playlists.clear();
-        const std::string playlistPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/PlaylistManager/Playlists";
-
-        if(!std::filesystem::is_directory(playlistPath)) {
-            INFO("Don't have playlist dir %s", playlistPath.c_str());
-            return "";
-        }
-        for (const auto& entry : std::filesystem::directory_iterator(playlistPath)) {
-            if(!entry.is_directory()) {
-                rapidjson::Document document;
-                auto path = entry.path().string();
-                if (!LoadFile(path, document))
-                    continue;
-                const std::string playlistTitle = document.GetObject()["playlistTitle"].GetString();
-                playlists[CustomLevelPackPrefixID + playlistTitle] = path;
-                // INFO("LoadPlaylists %s : %s", playlistTitle.c_str(), path.c_str());
-            }
-        }
-    }
-    if (std::string(listID).empty() || !playlists.contains(listID)) {
-        INFO("Failed to find playlist of %s", std::string(listID).c_str());
-        return "";
-    }
-    return playlists[listID];
-}
-
-bool CreateFile(const std::string &name) {
-    try {
-        rapidjson::Document document;
-        rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
-
-        document.SetObject();
-        document.AddMember("playlistTitle", name, allocator);   // require
-        document.AddMember("playlistDescription", "Created by " ID, allocator);
-        document.AddMember("songs", rapidjson::Value(rapidjson::kArrayType), allocator);             // require
-        document.AddMember("image", rapidjson::Value(), allocator);
-        if (!WriteFile(CustomLevelPackPath + name, document))
-            throw std::invalid_argument("failed to write file");
-        return true;
-    } catch (const std::exception &e) {
-        PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
-        ERROR("Error create playlist %s: %s", name.c_str(), e.what());
-    }
-    return false;
-}
-
-bool DeleteFile(const std::string &path) {
-    if(!fileexists(path))
-        return true;
-    return deletefile(path);
-}
-
-bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::string &insertPath = "") {
-    try {
-        rapidjson::Document document;
-        if(!path.empty() && !LoadFile(path, document))
-            throw std::invalid_argument("failed to load file");
-
-        int idx = 0;
-        const std::string selectedLevelID = LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID();
-        const bool found = !path.empty() && FindSongIdx(document, selectedLevelID, idx);
-
-        const auto &songs = document.GetObject()["songs"].GetArray();
-        switch (act) {
-            case ITEM_INSERT:
-            {
-                rapidjson::Document document2;
-                rapidjson::Document::AllocatorType& allocator2 = document2.GetAllocator();
-                rapidjson::Value insertSong(rapidjson::kObjectType);
-
-                if (!found) {
-                    GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
-                    insertSong.SetObject();
-                    insertSong.AddMember("songName", std::string(selectedlevel->get_songName()), allocator2);
-                    insertSong.AddMember("levelAuthorName", std::string(selectedlevel->get_levelAuthorName()), allocator2);
-                    insertSong.AddMember("hash", std::string(selectedlevel->get_levelID()).substr(CustomLevelPrefixID.length()), allocator2);
-                    insertSong.AddMember("levelid", std::string(selectedlevel->get_levelID()), allocator2);
-                    insertSong.AddMember("uploader", std::string(selectedlevel->get_levelAuthorName()), allocator2);
-                } else
-                    insertSong = songs[idx];
-
-                if (!LoadFile(insertPath, document2))
-                    throw std::invalid_argument("failed to load file which want to insert to");
-                document2.GetObject()["songs"].GetArray().PushBack(insertSong, allocator2);
-                if (!WriteFile(insertPath, document2))
-                    throw std::invalid_argument("failed to write file");
-            }
-            break;
-            case ITEM_REMOVE:
-                if (path.empty()) {
-                    bool has_remove = false;
-                    if (playlists.empty())
-                        GetPlaylistPath();
-                    for (auto it : playlists)
-                        has_remove |= UpdateFile(it.second, ITEM_REMOVE);
-                    if (!has_remove)
-                        return false;
-                } else if (!found) {
-                    ERROR("Failed to find %s in playlist dir %s", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str());
-                    return false;
-                } else {
-                    songs.Erase(songs.Begin() + idx);
-                    if (!WriteFile(path, document))
-                        throw std::invalid_argument("failed to write file");
-                }
-                break;
-            case ITEM_MOVE_DOWN:
-                if (!found) {
-                    ERROR("Failed to find %s in playlist dir %s", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str());
-                    return false;
-                }
-                if (idx >= songs.Size() - 1) // already at bottom
-                    return false;
-                songs[idx].Swap(songs[idx+1]);
-                if (!WriteFile(path, document))
-                    throw std::invalid_argument("failed to write file");
-                break;
-            case ITEM_MOVE_UP:
-                if (!found) {
-                    ERROR("Failed to find %s in playlist dir %s", std::string(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()->get_levelID()).c_str(), path.c_str());
-                    return false;
-                }
-                if (idx <= 0) // already at top
-                    return false;
-                songs[idx].Swap(songs[idx-1]);
-                if (!WriteFile(path, document))
-                    throw std::invalid_argument("failed to write file");
-                break;
-        }
-        return true;
-    } catch (const std::exception &e) {
-        PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
-        ERROR("Error loading playlist %s: %s", path.data(), e.what());
-    }
-    return false;
-}
 
 static bool IsSelectedCustomPack()
 {
     return LevelFilteringNavigationController && LevelCollectionNavigationController && LevelCollectionNavigationController->dyn__levelPack() &&
             GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::CustomSongs == LevelFilteringNavigationController->get_selectedLevelCategory() &&
             CustomLevelID != LevelCollectionNavigationController->dyn__levelPack()->get_packID();
+}
+
+static GlobalNamespace::CustomPreviewBeatmapLevel *GetSelectedCustomPreviewBeatmapLevel()
+{
+    return (LevelCollectionTableView && LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()) ?
+            reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()) : nullptr;
 }
 
 static const std::string GetSelectedPackID()
@@ -396,94 +154,11 @@ static void RefreshAndStayList(const SCROLL_ACTION act) {
     });
 }
 
-static GlobalNamespace::IAnnotatedBeatmapLevelCollection* GetLevelCollectionByName(const ::StringW &levelCollectionName)
-{
-    GlobalNamespace::IAnnotatedBeatmapLevelCollection* levelCollection = nullptr;
-
-    // search level packs
-    auto beatMapLevelPackCollection = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::BeatmapLevelPackCollectionSO*>().Last();
-    auto levelpacks = beatMapLevelPackCollection->dyn__allBeatmapLevelPacks();
-    int length = levelpacks.Length();
-    for (int i = 0; i < length; i++)
-    {
-        auto o = reinterpret_cast<GlobalNamespace::IAnnotatedBeatmapLevelCollection*>(levelpacks[i]);
-        if (o->get_collectionName()->Equals(levelCollectionName))
-        {
-            levelCollection = o;
-            break;
-        }
-    }
-
-    // search playlists
-    if (!levelCollection)
-    {
-        auto annotatedBeatmapLevelCollections = listToArrayW(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
-        //IReadOnlyList<IAnnotatedBeatmapLevelCollection> _annotatedBeatmapLevelCollections = AnnotatedBeatmapLevelCollectionsViewController.GetField<IReadOnlyList<IAnnotatedBeatmapLevelCollection>, AnnotatedBeatmapLevelCollectionsViewController>("_annotatedBeatmapLevelCollections");
-        // length = ::System::Collections::Generic::IReadOnlyCollection_1<::GlobalNamespace::IAnnotatedBeatmapLevelCollection*>(*annotatedBeatmapLevelCollections).get_Count();
-        length = annotatedBeatmapLevelCollections.Length();
-        for (int i = 0; i < length; i++)
-        {
-            auto c = annotatedBeatmapLevelCollections[i];
-            if (c->get_collectionName()->Equals(levelCollectionName))
-            {
-                levelCollection = c;
-                break;
-            }
-        }
-    }
-
-    return levelCollection;
-}
-
-static void SelectLevelCollection(const int lastCollectionIdx, const ::StringW &levelCollectionName)
-{
-    try
-    {
-        auto collection = GetLevelCollectionByName(levelCollectionName);
-        if (!collection)
-        {
-            INFO("Could not locate requested level collection...");
-            return;
-        }
-
-        INFO("Selecting level collection: %s", std::string(levelCollectionName).c_str());
-        // INFO("1 Selecting level collection: %s", std::string(levelCollectionName).c_str());
-
-        /* no need
-        LevelFilteringNavigationController->SelectAnnotatedBeatmapLevelCollection(reinterpret_cast<GlobalNamespace::IBeatmapLevelPack*>(collection));
-        // ^^^ will reset to music packs category
-        LevelCategoryViewController->Setup(GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::CustomSongs, LevelFilteringNavigationController->dyn__enabledLevelCategories());
-        // ^^^ only cate change, but play list view is music packs
-        LevelFilteringNavigationController->UpdateSecondChildControllerContent(GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::CustomSongs);
-        // ^^^ after cate change, this can change play list
-        */
-
-        // AnnotatedBeatmapLevelCollectionsViewController->dyn__selectedItemIndex() = lastCollectionIdx;
-        // AnnotatedBeatmapLevelCollectionsViewController->HandleDidSelectAnnotatedBeatmapLevelCollection(collection);
-        // ^^^ no use
-        AnnotatedBeatmapLevelCollectionsViewController->SetData(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections(), lastCollectionIdx, false);
-        // AnnotatedBeatmapLevelCollectionsViewController->HandleDidSelectAnnotatedBeatmapLevelCollection(collection);
-
-
-        INFO("2 Selecting level collection: %s", std::string(levelCollectionName).c_str());
-        // make table to be specific play list
-        // LevelFilteringNavigationController->HandleAnnotatedBeatmapLevelCollectionsViewControllerDidSelectAnnotatedBeatmapLevelCollection(collection);
-
-
-        INFO("Done selecting level collection!");
-    }
-    catch (const std::exception& e)
-    {
-        ERROR("Failed to select level collection, err: %s", e.what());
-    }
-}
-
-void resetUI()
-{
-    if (deleteButtonImageView)
-        deleteButtonImageView->set_color(UnityEngine::Color::get_white());
-    if (deleteAndRemoveButtonImageView)
-        deleteAndRemoveButtonImageView->set_color(UnityEngine::Color::get_white());
+static void resetUI() {
+    if (deleteButton)
+        deleteButton->ResetUI();
+    if (deleteAndRemoveButton)
+        deleteAndRemoveButton->ResetUI();
     if (moveUpButton)
         moveUpButton->set_interactable(true);
     if (moveUpButtonImageView)
@@ -498,10 +173,9 @@ void resetUI()
         moveDownButton->set_interactable(true);
     if (createListInput)
         createListInput->get_gameObject()->set_active(false);
-    if (deleteListButton)
-        deleteListButton->set_interactable(true);
-    if (deleteListButtonImageView)
-        deleteListButtonImageView->set_color(UnityEngine::Color::get_white());
+    if (deleteListButton) {
+        deleteListButton->SetInteractable(true);
+    }
 }
 
 void adjustUI(bool forceDisable = false) // use forceDisable, casue don't know how to decide if now at main menu
@@ -518,7 +192,7 @@ void adjustUI(bool forceDisable = false) // use forceDisable, casue don't know h
     //     deleteButton->get_gameObject()->set_active(true);
     // }
     if (deleteAndRemoveButton)
-        deleteAndRemoveButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomLevel);
+        deleteAndRemoveButton->operator->()->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomLevel);
     if (removeButton)
         removeButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomLevel);
     if (insertButton)
@@ -543,143 +217,10 @@ void adjustUI(bool forceDisable = false) // use forceDisable, casue don't know h
     if (createListButton)
         createListButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomCategory);
     if (deleteListButton) {
-        deleteListButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomCategory);
-        if (!atCustomPack) {
-            deleteListButton->set_interactable(false);
-            if (deleteListButtonImageView)
-                deleteListButtonImageView->set_color(UnityEngine::Color::get_gray());
-        }
+        deleteListButton->operator->()->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomCategory);
+        if (!atCustomPack)
+            deleteListButton->SetInteractable(false);
     }
-}
-
-template <class T>
-static void listAllName(UnityEngine::Transform *parent, const std::string &prefix = "") {
-    INFO("%s #p: tag: %s, name: %s, id: %u", prefix.c_str(), std::string(parent->get_tag()).c_str(), std::string(parent->get_name()).c_str(), parent->GetInstanceID());
-    auto childs = parent->GetComponentsInChildren<T *>();
-    // auto childs = parent->GetComponentsInChildren<UnityEngine::Transform *>();
-    // auto childs = parent->GetComponentsInChildren<TMPro::TextMeshProUGUI *>();
-    // auto childs = parent->GetComponentsInChildren<UnityEngine::UI::Button *>();
-    // auto childs = parent->GetComponentsInChildren<GlobalNamespace::StandardLevelDetailViewController *>();
-    for (size_t i = 0; i < childs.Length(); i++)
-    {
-        if (parent->GetInstanceID() == childs.get(i)->GetInstanceID())
-            continue;
-        INFO("%s #%zu: tag: %s, name: %s, id: %u", prefix.c_str(), i, std::string(childs.get(i)->get_tag()).c_str(), std::string(childs.get(i)->get_name()).c_str(), childs.get(i)->GetInstanceID());
-        // for class == ImageView
-        // childs.get(i)->set_color(UnityEngine::Color::get_red());
-        // childs.get(i)->set_color0(UnityEngine::Color::get_red());
-        // childs.get(i)->set_color1(UnityEngine::Color::get_red());
-        // for class == Transform
-        // childs.get(i)->Translate(1,1,1);
-        // listAllName(childs.get(i), prefix + "  ");
-    }
-}
-
-static void inActiveLevelDeleteButton(UnityEngine::Transform *parent) {
-    static auto deleteLevelButtonName = il2cpp_utils::newcsstr<il2cpp_utils::CreationType::Manual>("DeleteLevelButton");
-    auto deleteButtonTransform = parent->FindChild(deleteLevelButtonName);
-
-    if (deleteButtonTransform) {
-        INFO("Inactive level delete button, id: %u", deleteButtonTransform->GetInstanceID());
-        deleteButtonTransform->get_gameObject()->SetActive(false);
-    }
-}
-
-static void logPacks(::StringW lastCollectionName = "") {
-    auto packArr = BeatmapLevelsModel->get_customLevelPackCollection()->get_beatmapLevelPacks();
-    for (int j = 0; j < packArr.Length(); j++)
-    {
-        auto tmp = listToArrayW(((GlobalNamespace::IAnnotatedBeatmapLevelCollection *)(packArr.get(j)))->get_beatmapLevelCollection()->get_beatmapLevels());
-        INFO("pack #%d %s has %lu", j, std::string(packArr.get(j)->get_packName()).c_str(), tmp.Length());
-        // if (!packArr.get(j)->get_packName()->Equals(lastCollectionName))
-        //     continue;
-        // for (int i = 0; i < tmp.Length(); i++)
-        //     INFO("    pack #%d %s", i, std::string(tmp[i]->get_songName()).c_str());
-    }
-}
-
-
-UnityEngine::UI::Button* CreateIconButton(std::string_view name, UnityEngine::Transform* parent, std::string_view buttonTemplate, UnityEngine::Vector2 anchoredPosition, UnityEngine::Vector2 sizeDelta, std::function<void(void)> onClick, UnityEngine::Sprite* icon, std::string_view hint)
-{
-    static UnityEngine::Material* templateMaterial = nullptr;
-
-    if (!templateMaterial) {
-        auto practiceButton = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::UI::Button*>().First([] (auto x) { return x->get_name() == "PracticeButton"; } );
-        if (practiceButton)
-            templateMaterial = practiceButton->get_gameObject()->GetComponentInChildren<HMUI::ImageView*>()->get_material();
-    }
-    auto btn = QuestUI::BeatSaberUI::CreateUIButton(parent, "", buttonTemplate, anchoredPosition, sizeDelta, onClick);
-
-    QuestUI::BeatSaberUI::AddHoverHint(btn->get_gameObject(), hint);
-
-    UnityEngine::Object::Destroy(btn->get_transform()->Find("Underline")->get_gameObject());
-
-    UnityEngine::Transform* contentTransform = btn->get_transform()->Find("Content");
-    UnityEngine::Object::Destroy(contentTransform->Find("Text")->get_gameObject());
-    UnityEngine::Object::Destroy(contentTransform->GetComponent<UnityEngine::UI::LayoutElement*>());
-
-    UnityEngine::UI::Image* iconImage = UnityEngine::GameObject::New_ctor("Icon")->AddComponent<HMUI::ImageView*>();
-    if (templateMaterial)
-        iconImage->set_material(templateMaterial);
-    iconImage->get_rectTransform()->SetParent(contentTransform, false);
-    iconImage->get_rectTransform()->set_sizeDelta(UnityEngine::Vector2(10.0f, 10.0f));
-    iconImage->set_sprite(icon);
-    iconImage->set_preserveAspect(true);
-
-    return btn;
-}
-
-static UnityEngine::Sprite* FileToSprite(const std::string_view &image_name)
-{
-    std::string path = string_format("/sdcard/ModData/com.beatgames.beatsaber/Mods/%s/Icons/%s.png", modInfo.id.c_str(), image_name.data());
-    return QuestUI::BeatSaberUI::FileToSprite(path);
-}
-
-template <class T, typename Method>
-static T MakeDelegate(Method fun)
-{
-    return il2cpp_utils::MakeDelegate<T>(classof(T), fun);
-}
-
-#include "questui/shared/CustomTypes/Components/WeakPtrGO.hpp"
-#include "codegen/include/HMUI/InputFieldView.hpp"
-#include "codegen/include/Polyglot/LocalizedTextMeshProUGUI.hpp"
-#include "codegen/include/HMUI/InputFieldView_InputFieldChanged.hpp"
-HMUI::InputFieldView* CreateStringInput(UnityEngine::Transform* parent, StringW settingsName, StringW currentValue, UnityEngine::Vector2 anchoredPosition, float width,std::function<void(StringW)> onEnter) {
-    auto originalFieldView = UnityEngine::Resources::FindObjectsOfTypeAll<HMUI::InputFieldView *>().First(
-        [](HMUI::InputFieldView *x) {
-            return x->get_name() == "GuestNameInputField";
-        }
-    );
-    UnityEngine::GameObject* gameObj = UnityEngine::Object::Instantiate(originalFieldView->get_gameObject(), parent, false);
-    gameObj->set_name("QuestUIStringInput");
-
-    UnityEngine::RectTransform* rectTransform = gameObj->GetComponent<UnityEngine::RectTransform*>();
-    rectTransform->SetParent(parent, false);
-    rectTransform->set_anchoredPosition(anchoredPosition);
-    rectTransform->set_sizeDelta(UnityEngine::Vector2(width, 10.0f));
-    rectTransform->set_localScale({0.75, 0.75, 1});
-
-    HMUI::InputFieldView* fieldView = gameObj->GetComponent<HMUI::InputFieldView*>();
-    fieldView->dyn__useGlobalKeyboard() = true;
-    fieldView->dyn__textLengthLimit() = 28;
-
-    fieldView->Awake();
-
-    std::function<void()> enterFunction = (std::function<void()>) [fieldView, onEnter] () {
-        if (onEnter)
-            onEnter(fieldView->get_text());
-    };
-    auto clearButton = fieldView->get_gameObject()->Find("ClearButton")->GetComponent<UnityEngine::UI::Button*>();
-    clearButton->set_onClick(UnityEngine::UI::Button::ButtonClickedEvent::New_ctor());
-    clearButton->get_onClick()->AddListener(MakeDelegate<UnityEngine::Events::UnityAction*>(enterFunction));
-    QuestUI::BeatSaberUI::SetButtonIcon(clearButton, FileToSprite("EnterIcon"));
-
-    UnityEngine::Object::Destroy(fieldView->dyn__placeholderText()->GetComponent<Polyglot::LocalizedTextMeshProUGUI*>());
-    fieldView->dyn__placeholderText()->GetComponent<TMPro::TextMeshProUGUI*>()->SetText(settingsName);
-    fieldView->SetText(currentValue);
-
-    return fieldView;
 }
 
 static void createListActionButton() {
@@ -692,6 +233,15 @@ static void createListActionButton() {
                 createListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
                                     UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [] (StringW value) {
                                         INFO("Enter %s", std::string(value).c_str());
+                                        // validate
+                                        auto annotatedBeatmapLevelCollections = listToArrayW(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+                                        for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
+                                            std::string selectedPackName = annotatedBeatmapLevelCollections[i]->get_collectionName();
+                                            if (value != selectedPackName)
+                                                continue;
+                                            PlaylistEditor::Toast::GetInstance()->ShowMessage("List already exist");
+                                            return;
+                                        }
                                         if (CreateFile(value)) {
                                             RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
                                             PlaylistEditor::Toast::GetInstance()->ShowMessage("Create new list");
@@ -704,22 +254,13 @@ static void createListActionButton() {
             }
             createListInput->get_gameObject()->set_active(!createListInput->get_gameObject()->get_active());
         }, FileToSprite("InsertIcon"), "Create List");
-    deleteListButton = CreateIconButton("DeleteListButton", LevelFilteringNavigationController->get_transform(), "PracticeButton",
+    deleteListButton = new PlaylistEditor::DoubleClickIconButton("DeleteListButton", LevelFilteringNavigationController->get_transform(), "PracticeButton",
                                         UnityEngine::Vector2(69.0f, 3.0f), UnityEngine::Vector2(10.0f, 7.0f), [] () {
-                            if (UnityEngine::Color::get_red() != deleteListButtonImageView->get_color()) {
-                                deleteListButtonImageView->set_color(UnityEngine::Color::get_red());
-                                return;
-                            }
-                            deleteListButtonImageView->set_color(UnityEngine::Color::get_white());
                             if (DeleteFile(GetPlaylistPath(GetSelectedPackID()))) {
                                 PlaylistEditor::Toast::GetInstance()->ShowMessage("Delete selected list");
                                 RefreshAndStayList(SCROLL_ACTION::NO_STAY);
                             }
                         }, FileToSprite("DeleteIcon"), "Delete List");
-    deleteListButtonImageView = deleteListButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
-        return "Icon" == x->get_name();
-    });
-    deleteListButtonImageView->get_transform()->SetAsLastSibling();
 }
 
 MAKE_HOOK_MATCH(FlowCoordinator_PresentFlowCoordinator, &HMUI::FlowCoordinator::PresentFlowCoordinator, void, HMUI::FlowCoordinator* self, HMUI::FlowCoordinator* flowCoordinator, System::Action* finishedCallback, HMUI::ViewController::AnimationDirection animationDirection, bool immediately, bool replaceTopViewController)
@@ -758,17 +299,11 @@ MAKE_HOOK_MATCH(FlowCoordinator_PresentFlowCoordinator, &HMUI::FlowCoordinator::
     BeatmapCharacteristicSelectionViewController = StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController();
     INFO("Acquired BeatmapCharacteristicSegmentedControlController [%d]", BeatmapCharacteristicSelectionViewController->GetInstanceID());
 
-    LevelDifficultyViewController = StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController();
-    INFO("Acquired BeatmapDifficultySegmentedControlController [%d]", LevelDifficultyViewController->GetInstanceID());
-
     AnnotatedBeatmapLevelCollectionsViewController = LevelFilteringNavigationController->dyn__annotatedBeatmapLevelCollectionsViewController();
     INFO("Acquired AnnotatedBeatmapLevelCollectionsViewController from LevelFilteringNavigationController [%d]", AnnotatedBeatmapLevelCollectionsViewController->GetInstanceID());
 
     LevelCategoryViewController = LevelFilteringNavigationController->dyn__selectLevelCategoryViewController();
     INFO("Acquired LevelCategoryViewController from LevelFilteringNavigationController [%d]", LevelCategoryViewController->GetInstanceID());
-
-    BeatmapLevelsModel = LevelFilteringNavigationController->dyn__beatmapLevelsModel();
-    INFO("Acquired BeatmapLevelsModel [%d]", BeatmapLevelsModel->GetInstanceID());
 
     if (!LevelCategoryViewController->dyn_didSelectLevelCategoryEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
         INFO("Add event LevelCategoryViewController->dyn_didSelectLevelCategoryEvent()");
@@ -776,7 +311,7 @@ MAKE_HOOK_MATCH(FlowCoordinator_PresentFlowCoordinator, &HMUI::FlowCoordinator::
             INFO("LevelCategoryViewController SelectLevelCategoryEvent");
             adjustUI();
         };
-        LevelCategoryViewController->add_didSelectLevelCategoryEvent(MakeDelegate<System::Action_2<GlobalNamespace::SelectLevelCategoryViewController*, GlobalNamespace::SelectLevelCategoryViewController::LevelCategory>*>(didSelectLevelCategoryEventFun));
+        LevelCategoryViewController->add_didSelectLevelCategoryEvent(PlaylistEditor::Utils::MakeDelegate<System::Action_2<GlobalNamespace::SelectLevelCategoryViewController*, GlobalNamespace::SelectLevelCategoryViewController::LevelCategory>*>(didSelectLevelCategoryEventFun));
     }
 
     if (!LevelCollectionNavigationController->dyn_didSelectLevelPackEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
@@ -785,7 +320,7 @@ MAKE_HOOK_MATCH(FlowCoordinator_PresentFlowCoordinator, &HMUI::FlowCoordinator::
             INFO("LevelCollectionNavigationController SelectLevelPackEvent"); // select to level list header
             adjustUI();
         };
-        LevelCollectionNavigationController->add_didSelectLevelPackEvent(MakeDelegate<System::Action_2<GlobalNamespace::LevelCollectionNavigationController*, GlobalNamespace::IBeatmapLevelPack*>*>(didSelectLevelPackEventFun));
+        LevelCollectionNavigationController->add_didSelectLevelPackEvent(PlaylistEditor::Utils::MakeDelegate<System::Action_2<GlobalNamespace::LevelCollectionNavigationController*, GlobalNamespace::IBeatmapLevelPack*>*>(didSelectLevelPackEventFun));
     }
 
     if (!AnnotatedBeatmapLevelCollectionsViewController->dyn_didOpenBeatmapLevelCollectionsEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
@@ -794,7 +329,7 @@ MAKE_HOOK_MATCH(FlowCoordinator_PresentFlowCoordinator, &HMUI::FlowCoordinator::
             INFO("AnnotatedBeatmapLevelCollectionsViewController OpenBeatmapLevelCollectionsEvent");
             adjustUI();
         };
-        AnnotatedBeatmapLevelCollectionsViewController->add_didOpenBeatmapLevelCollectionsEvent(MakeDelegate<System::Action*>(didOpenBeatmapLevelCollectionsEventFun));
+        AnnotatedBeatmapLevelCollectionsViewController->add_didOpenBeatmapLevelCollectionsEvent(PlaylistEditor::Utils::MakeDelegate<System::Action*>(didOpenBeatmapLevelCollectionsEventFun));
     }
 
     if (!AnnotatedBeatmapLevelCollectionsViewController->dyn_didSelectAnnotatedBeatmapLevelCollectionEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
@@ -803,7 +338,7 @@ MAKE_HOOK_MATCH(FlowCoordinator_PresentFlowCoordinator, &HMUI::FlowCoordinator::
             INFO("AnnotatedBeatmapLevelCollectionsViewController SelectAnnotatedBeatmapLevelCollectionEvent");
             adjustUI();
         };
-        AnnotatedBeatmapLevelCollectionsViewController->add_didSelectAnnotatedBeatmapLevelCollectionEvent(MakeDelegate<System::Action_1<GlobalNamespace::IAnnotatedBeatmapLevelCollection*>*>(didSelectAnnotatedBeatmapLevelCollectionEventFun));
+        AnnotatedBeatmapLevelCollectionsViewController->add_didSelectAnnotatedBeatmapLevelCollectionEvent(PlaylistEditor::Utils::MakeDelegate<System::Action_1<GlobalNamespace::IAnnotatedBeatmapLevelCollection*>*>(didSelectAnnotatedBeatmapLevelCollectionEventFun));
     }
 
     createListActionButton();
@@ -815,60 +350,39 @@ static void createActionButton(UnityEngine::Transform *parent) {
     if (!deleteButtonTransform)
         return;
     INFO("SetOnClick level delete button, id: %u", deleteButtonTransform->GetInstanceID());
-    deleteButton = deleteButtonTransform->get_gameObject()->GetComponent<UnityEngine::UI::Button*>();
-    deleteButtonImageView = deleteButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
-        return "Icon" == x->get_name();
-    });
-    std::function<void()> deleteFunction = (std::function<void()>) [] () {
-        if (!deleteButtonImageView) {
-            INFO("Null deleteButtonImageView");
-            return;
-        }
-        if (UnityEngine::Color::get_red() != deleteButtonImageView->get_color()) {
-            deleteButtonImageView->set_color(UnityEngine::Color::get_red());
-            return;
-        }
+    auto btn = deleteButtonTransform->get_gameObject()->GetComponent<UnityEngine::UI::Button*>();
+    deleteButton = new PlaylistEditor::DoubleClickIconButton(btn, [] () {
         GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
         RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [] {
-                PlaylistEditor::Toast::GetInstance()->ShowMessage("Delete song");
-                RefreshAndStayList(IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
-            }
-        );
-    };
-    deleteButton->set_onClick(UnityEngine::UI::Button::ButtonClickedEvent::New_ctor());
-    deleteButton->get_onClick()->AddListener(MakeDelegate<UnityEngine::Events::UnityAction*>(deleteFunction));
+            PlaylistEditor::Toast::GetInstance()->ShowMessage("Delete song");
+            RefreshAndStayList(IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
+        });
+    });
 
     auto posX = -22.5f;
-    deleteAndRemoveButton = CreateIconButton("DeleteAndRemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+    deleteAndRemoveButton = new PlaylistEditor::DoubleClickIconButton("DeleteAndRemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(20.0f,7.0f), [] () {
-            if (UnityEngine::Color::get_red() != deleteAndRemoveButtonImageView->get_color()) {
-                deleteAndRemoveButtonImageView->set_color(UnityEngine::Color::get_red());
-                return;
-            }
             GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
             RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [] {
-                    if (UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_REMOVE)) {
+                    if (UpdateFile(GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(GetSelectedPackID()), FILE_ACTION::ITEM_REMOVE))
                         PlaylistEditor::Toast::GetInstance()->ShowMessage(IsSelectedCustomPack() ? "Delete song and remove from the list" : "Delete song and remove from all list" );
-                        RefreshAndStayList(IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
-                    }
+                    else
+                        PlaylistEditor::Toast::GetInstance()->ShowMessage("Delete song");
+                    RefreshAndStayList(IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
                 }
             );
         }, FileToSprite("DeleteAndRemoveIcon"), "Delete and Remove Song from List");
-    deleteAndRemoveButtonImageView = deleteAndRemoveButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
-        return "Icon" == x->get_name();
-    });
-    deleteAndRemoveButton->get_gameObject()->set_active(false);
-    deleteAndRemoveButton->get_transform()->SetAsLastSibling();
+    deleteAndRemoveButton->operator->()->get_gameObject()->set_active(false);
+    // deleteAndRemoveButton->get_transform()->SetAsLastSibling();
 
     posX += 15.0f + 1.25f ;
     removeButton = CreateIconButton("RemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-            if (UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_REMOVE)) {
+            if (UpdateFile(GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(GetSelectedPackID()), FILE_ACTION::ITEM_REMOVE)) {
                 PlaylistEditor::Toast::GetInstance()->ShowMessage(IsSelectedCustomPack() ? "Remove song from the list" : "Remove song from all list");
                 RefreshAndStayList(IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
-            } else {
+            } else
                 PlaylistEditor::Toast::GetInstance()->ShowMessage("Song isn't in any list");
-            }
         }, FileToSprite("RemoveIcon"), "Remove Song from List");
     removeButton->get_gameObject()->set_active(false);
     removeButton->get_transform()->SetAsLastSibling();
@@ -876,7 +390,7 @@ static void createActionButton(UnityEngine::Transform *parent) {
     posX += 10.0f + 1.25f;
     moveUpButton = CreateIconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-            if (UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_MOVE_UP)) {
+            if (UpdateFile(GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_UP)) {
                 PlaylistEditor::Toast::GetInstance()->ShowMessage("Move up song");
                 RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_UP);
             }
@@ -890,7 +404,7 @@ static void createActionButton(UnityEngine::Transform *parent) {
     posX += 10.0f + 1.25f;
     moveDownButton = CreateIconButton("MoveDownFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-            if (UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_MOVE_DOWN)) {
+            if (UpdateFile(GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_DOWN)) {
                 PlaylistEditor::Toast::GetInstance()->ShowMessage("Move down song");
                 RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_DOWN);
             }
@@ -921,14 +435,17 @@ static void createActionButton(UnityEngine::Transform *parent) {
             }
             listModal->get_gameObject()->set_active(true);
             listModalItem.clear();
-            GetPlaylistPath("", true);
-            for (auto it : playlists) {
-                std::string selectedPackName = std::string(it.first).substr(CustomLevelPackPrefixID.length());
+
+            auto annotatedBeatmapLevelCollections = listToArrayW(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+            for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
+                std::string selectedPackName = annotatedBeatmapLevelCollections[i]->get_collectionName();
+                if (CustomLevelName == selectedPackName)
+                    continue;
                 listModalItem.push_back(QuestUI::BeatSaberUI::CreateClickableText(listContainer->get_transform(), selectedPackName, false, [selectedPackName] () {
                     std::string selectedPackId = CustomLevelPackPrefixID + selectedPackName;
                     listModal->get_gameObject()->set_active(false);
                     insertButton->set_interactable(true);
-                    if (UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_INSERT, GetPlaylistPath(selectedPackId))) {
+                    if (UpdateFile(GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(GetSelectedPackID()), FILE_ACTION::ITEM_INSERT, GetPlaylistPath(selectedPackId))) {
                         PlaylistEditor::Toast::GetInstance()->ShowMessage("Insert song to selected list");
                         RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
                     }
