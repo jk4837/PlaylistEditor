@@ -64,7 +64,6 @@
 
 #include "main.hpp"
 #include "logging.hpp"
-// #include "toast.hpp"
 #include "CustomTypes/Toast.hpp"
 
 const std::string CustomLevelPackPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/PlaylistManager/Playlists/";
@@ -73,7 +72,6 @@ const std::string CustomLevelID = "custom_levelPack_CustomLevels";
 const std::string CustomLevelPrefixID = "custom_level_";
 
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
-// static PlaylistEditor::Toast *Toast;
 // static CustomPreviewBeatmapLevel *selectedlevel = nullptr;
 static HMUI::FlowCoordinator* FlowCoordinator = nullptr;
 static GlobalNamespace::LevelSelectionNavigationController *LevelSelectionNavigationController = nullptr;
@@ -284,7 +282,6 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::strin
                 document2.GetObject()["songs"].GetArray().PushBack(insertSong, allocator2);
                 if (!WriteFile(insertPath, document2))
                     throw std::invalid_argument("failed to write file");
-                PlaylistEditor::Toast::GetInstance()->ShowMessage("insert song");
             }
             break;
             case ITEM_REMOVE:
@@ -304,7 +301,6 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::strin
                     if (!WriteFile(path, document))
                         throw std::invalid_argument("failed to write file");
                 }
-                PlaylistEditor::Toast::GetInstance()->ShowMessage("remove song");
                 break;
             case ITEM_MOVE_DOWN:
                 if (!found) {
@@ -316,7 +312,6 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::strin
                 songs[idx].Swap(songs[idx+1]);
                 if (!WriteFile(path, document))
                     throw std::invalid_argument("failed to write file");
-                PlaylistEditor::Toast::GetInstance()->ShowMessage("move donwn song");
                 break;
             case ITEM_MOVE_UP:
                 if (!found) {
@@ -328,7 +323,6 @@ bool UpdateFile(const std::string &path, const LIST_ACTION act, const std::strin
                 songs[idx].Swap(songs[idx-1]);
                 if (!WriteFile(path, document))
                     throw std::invalid_argument("failed to write file");
-                PlaylistEditor::Toast::GetInstance()->ShowMessage("move up song");
                 break;
         }
         return true;
@@ -781,17 +775,18 @@ static void createListActionButton() {
     createListButton = CreateIconButton("CreateListButton", LevelFilteringNavigationController->get_transform(), "PracticeButton",
                                         UnityEngine::Vector2(69.0f, -3.0f), UnityEngine::Vector2(10.0f, 7.0f), [] () {
             if (!createListInput) {
-                INFO("0 createListInput");
                 auto screenContainer = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [](auto x) {
                     return x->get_name()->Equals("ScreenContainer");
                 });
                 createListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
                                     UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [] (StringW value) {
                                         INFO("Enter %s", std::string(value).c_str());
-                                        if (CreateFile(value))
+                                        if (CreateFile(value)) {
                                             RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
+                                            PlaylistEditor::Toast::GetInstance()->ShowMessage("Create new list");
+                                            createListInput->SetText("");
+                                        }
                                         createListInput->get_gameObject()->set_active(false);
-                                        createListInput->SetText("");
                 });
                 createListInput->get_gameObject()->set_active(true);
                 return;
@@ -804,9 +799,11 @@ static void createListActionButton() {
                                 deleteListButtonImageView->set_color(UnityEngine::Color::get_red());
                                 return;
                             }
-                            DeleteFile(GetPlaylistPath(GetSelectedPackID()));
                             deleteListButtonImageView->set_color(UnityEngine::Color::get_white());
-                            RefreshAndStayList(SCROLL_ACTION::NO_STAY);
+                            if (DeleteFile(GetPlaylistPath(GetSelectedPackID()))) {
+                                PlaylistEditor::Toast::GetInstance()->ShowMessage("Delete selected list");
+                                RefreshAndStayList(SCROLL_ACTION::NO_STAY);
+                            }
                         }, FileToSprite("DeleteIcon"), "Delete List");
     deleteListButtonImageView = deleteListButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
         return "Icon" == x->get_name();
@@ -834,7 +831,7 @@ static void createActionButton(UnityEngine::Transform *parent) {
         }
         GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
         RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [] {
-                INFO("Success delete song");
+                PlaylistEditor::Toast::GetInstance()->ShowMessage("Delete song");
                 RefreshAndStayList(IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
             }
         );
@@ -845,19 +842,16 @@ static void createActionButton(UnityEngine::Transform *parent) {
     auto posX = -22.5f;
     deleteAndRemoveButton = CreateIconButton("DeleteAndRemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(20.0f,7.0f), [] () {
-            if (!deleteAndRemoveButtonImageView) {
-                INFO("Null deleteAndRemoveButtonImageView");
-                return;
-            }
             if (UnityEngine::Color::get_red() != deleteAndRemoveButtonImageView->get_color()) {
                 deleteAndRemoveButtonImageView->set_color(UnityEngine::Color::get_red());
                 return;
             }
             GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
             RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [] {
-                    INFO("Success delete song");
-                    UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_REMOVE);
-                    RefreshAndStayList(IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
+                    if (UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_REMOVE)) {
+                        PlaylistEditor::Toast::GetInstance()->ShowMessage(IsSelectedCustomPack() ? "Delete song and remove from the list" : "Delete song and remove from all list" );
+                        RefreshAndStayList(IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
+                    }
                 }
             );
         }, FileToSprite("DeleteAndRemoveIcon"), "Delete and Remove Song from List");
@@ -870,8 +864,12 @@ static void createActionButton(UnityEngine::Transform *parent) {
     posX += 15.0f + 1.25f ;
     removeButton = CreateIconButton("RemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-            if (UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_REMOVE))
+            if (UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_REMOVE)) {
+                PlaylistEditor::Toast::GetInstance()->ShowMessage(IsSelectedCustomPack() ? "Remove song from the list" : "Remove song from all list");
                 RefreshAndStayList(IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
+            } else {
+                PlaylistEditor::Toast::GetInstance()->ShowMessage("Song isn't in any list");
+            }
         }, FileToSprite("RemoveIcon"), "Remove Song from List");
     removeButton->get_gameObject()->set_active(false);
     removeButton->get_transform()->SetAsLastSibling();
@@ -879,8 +877,10 @@ static void createActionButton(UnityEngine::Transform *parent) {
     posX += 10.0f + 1.25f;
     moveUpButton = CreateIconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-            UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_MOVE_UP);
-            RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_UP);
+            if (UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_MOVE_UP)) {
+                PlaylistEditor::Toast::GetInstance()->ShowMessage("Move up song");
+                RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_UP);
+            }
         }, FileToSprite("MoveUpIcon"), "Move Up Song from List");
     moveUpButton->get_gameObject()->set_active(false);
     moveUpButtonImageView = moveUpButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
@@ -891,8 +891,10 @@ static void createActionButton(UnityEngine::Transform *parent) {
     posX += 10.0f + 1.25f;
     moveDownButton = CreateIconButton("MoveDownFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-            UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_MOVE_DOWN);
-            RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_DOWN);
+            if (UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_MOVE_DOWN)) {
+                PlaylistEditor::Toast::GetInstance()->ShowMessage("Move down song");
+                RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_DOWN);
+            }
         }, FileToSprite("MoveDownIcon"), "Move Down Song from List");
     moveDownButton->get_gameObject()->set_active(false);
     moveDownButtonImageView = moveDownButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
@@ -925,11 +927,12 @@ static void createActionButton(UnityEngine::Transform *parent) {
                 std::string selectedPackName = std::string(it.first).substr(CustomLevelPackPrefixID.length());
                 listModalItem.push_back(QuestUI::BeatSaberUI::CreateClickableText(listContainer->get_transform(), selectedPackName, false, [selectedPackName] () {
                     std::string selectedPackId = CustomLevelPackPrefixID + selectedPackName;
-                    INFO("Cell %s clicked", selectedPackId.c_str());
                     listModal->get_gameObject()->set_active(false);
                     insertButton->set_interactable(true);
-                    UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_INSERT, GetPlaylistPath(selectedPackId));
-                    RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
+                    if (UpdateFile(GetPlaylistPath(GetSelectedPackID()), LIST_ACTION::ITEM_INSERT, GetPlaylistPath(selectedPackId))) {
+                        PlaylistEditor::Toast::GetInstance()->ShowMessage("Insert song to selected list");
+                        RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
+                    }
                 }));
             }
         }, FileToSprite("InsertIcon"), "Insert to List");
@@ -981,7 +984,6 @@ extern "C" void setup(ModInfo& info) {
 // Called later on in the game loading - a good time to install function hooks
 extern "C" void load() {
     il2cpp_functions::Init();
-    // Toast = PlaylistEditor::Toast::Create();
 
     RuntimeSongLoader::API::AddRefreshLevelPacksEvent(
         [] (RuntimeSongLoader::SongLoaderBeatmapLevelPackCollectionSO* customBeatmapLevelPackCollectionSO) {
