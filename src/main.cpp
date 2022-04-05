@@ -373,13 +373,19 @@ static void RefreshAndStayList(const SCROLL_ACTION act) {
     }
 
     RuntimeSongLoader::API::RefreshSongs(true,
-    [lastScrollPos, nextScrollPos, nextSelectedRow, lastCollectionIdx, act] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
+    [lastScrollPos, nextScrollPos, nextSelectedRow, lastCollectionName, act] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
         INFO("Success refresh song");
         if (NO_STAY == act)
             return;
-        if (IsSelectedCustomPack())
+        if ("" != lastCollectionName) {
             // select level collection
-            AnnotatedBeatmapLevelCollectionsViewController->SetData(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections(), lastCollectionIdx, false);
+            auto annotatedBeatmapLevelCollections = listToArrayW(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+            for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++)
+                if (annotatedBeatmapLevelCollections[i]->get_collectionName()->Equals(lastCollectionName)) {
+                    AnnotatedBeatmapLevelCollectionsViewController->SetData(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections(), i, false);
+                    break;
+                }
+        }
 
         // select level
         // LevelCollectionTableView->SelectLevel(nextPreviewBeatmapLevels); // this will jump to center
