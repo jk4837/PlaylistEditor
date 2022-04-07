@@ -3,6 +3,10 @@
 #include <dirent.h>
 #include <fstream>
 
+#include "System/Convert.hpp"
+#include "UnityEngine/ImageConversion.hpp"
+#include "UnityEngine/Sprite.hpp"
+
 #include "CustomTypes/Toast.hpp"
 #include "logging.hpp"
 #include "Utils/Utils.hpp"
@@ -134,6 +138,12 @@ bool DeleteFile(const std::string &path) {
     return deletefile(path);
 }
 
+static std::string GetCoverImageBase64String(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel)
+{
+    const ::ArrayW<uint8_t> byteArray = UnityEngine::ImageConversion::EncodeToPNG(selectedLevel->dyn__coverImage()->get_texture());
+    return "data:image/png;base64," + System::Convert::ToBase64String(byteArray);
+}
+
 bool UpdateFile(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const std::string &path, const FILE_ACTION act, const std::string &insertPath) {
     try {
         if (!selectedLevel)
@@ -167,7 +177,11 @@ bool UpdateFile(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const
 
                 if (!LoadFile(insertPath, document2))
                     throw std::invalid_argument("failed to load file which want to insert to");
+
                 document2.GetObject()["songs"].GetArray().PushBack(insertSong, allocator2);
+                if (document2.GetObject()["image"].IsNull())
+                    document2.GetObject()["image"].SetString(GetCoverImageBase64String(selectedLevel), allocator2);
+
                 if (!WriteFile(insertPath, document2))
                     throw std::invalid_argument("failed to write file");
             }
