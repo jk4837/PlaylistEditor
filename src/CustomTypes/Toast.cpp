@@ -2,7 +2,7 @@
 
 #include <chrono>
 
-#include "logging.hpp"
+#include "CustomTypes/Logging.hpp"
 
 #include "questui/shared/BeatSaberUI.hpp"
 #include "questui/shared/CustomTypes/Components/Backgroundable.hpp"
@@ -25,9 +25,9 @@ using namespace TMPro;
 
 DEFINE_TYPE(PlaylistEditor, Toast);
 
-Toast* Toast::Instance = nullptr;
+Toast *Toast::Instance = nullptr;
 
-Toast* Toast::GetInstance() {
+Toast *Toast::GetInstance() {
     if(!Instance) {
         static ConstString name("Toast");
         auto gameObject = GameObject::New_ctor(name);
@@ -81,11 +81,11 @@ void Toast::CreateCanvas() {
     if(!canvas) {
         canvas = BeatSaberUI::CreateCanvas();
         canvas->AddComponent<CurvedCanvasSettings*>()->SetRadius(100.0f);
-        RectTransform* transform = canvas->GetComponent<RectTransform*>();
+        RectTransform *transform = canvas->GetComponent<RectTransform*>();
         transform->set_position(UnityEngine::Vector3(0.0f, 0.1f, 4.2f));
         transform->set_eulerAngles(UnityEngine::Vector3(24.0f, 0.0f, 0.0f));
-        VerticalLayoutGroup* layout = BeatSaberUI::CreateVerticalLayoutGroup(transform);
-        GameObject* layoutGameObject = layout->get_gameObject();
+        VerticalLayoutGroup *layout = BeatSaberUI::CreateVerticalLayoutGroup(transform);
+        GameObject *layoutGameObject = layout->get_gameObject();
         layoutGameObject->GetComponent<ContentSizeFitter*>()->set_verticalFit(ContentSizeFitter::FitMode::PreferredSize);
         static ConstString bgName("round-rect-panel");
         layoutGameObject->AddComponent<Backgroundable*>()->ApplyBackgroundWithAlpha(bgName, 0.50f);

@@ -8,7 +8,7 @@
 #include "UnityEngine/Sprite.hpp"
 
 #include "CustomTypes/Toast.hpp"
-#include "logging.hpp"
+#include "CustomTypes/Logging.hpp"
 #include "Utils/Utils.hpp"
 
 namespace PlaylistEditor::Utils
@@ -86,13 +86,11 @@ std::string GetPlaylistPath(const StringW &listID, const bool fullRefresh) {
     if (!playlists.contains(listID)) {
         INFO("Don't have playlist %s, reload all", std::string(listID).c_str());
         playlists.clear();
-        const std::string playlistPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/PlaylistManager/Playlists";
-
-        if(!std::filesystem::is_directory(playlistPath)) {
-            INFO("Don't have playlist dir %s", playlistPath.c_str());
+        if(!std::filesystem::is_directory(CustomLevelPackPath)) {
+            INFO("Don't have playlist dir %s", CustomLevelPackPath.c_str());
             return "";
         }
-        for (const auto& entry : std::filesystem::directory_iterator(playlistPath)) {
+        for (const auto &entry : std::filesystem::directory_iterator(CustomLevelPackPath)) {
             if(!entry.is_directory()) {
                 rapidjson::Document document;
                 auto path = entry.path().string();
@@ -114,7 +112,7 @@ std::string GetPlaylistPath(const StringW &listID, const bool fullRefresh) {
 bool CreateFile(const std::string &name) {
     try {
         rapidjson::Document document;
-        rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+        rapidjson::Document::AllocatorType &allocator = document.GetAllocator();
 
         document.SetObject();
         document.AddMember("playlistTitle", name, allocator);   // require
@@ -144,7 +142,8 @@ static std::string GetCoverImageBase64String(GlobalNamespace::CustomPreviewBeatm
     return "data:image/png;base64," + System::Convert::ToBase64String(byteArray);
 }
 
-bool UpdateFile(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const std::string &path, const FILE_ACTION act, const std::string &insertPath) {
+bool UpdateFile(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const std::string &path,
+                const FILE_ACTION act, const std::string &insertPath) {
     try {
         if (!selectedLevel)
             throw std::invalid_argument("null selected level");
@@ -162,7 +161,7 @@ bool UpdateFile(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const
             case ITEM_INSERT:
             {
                 rapidjson::Document document2;
-                rapidjson::Document::AllocatorType& allocator2 = document2.GetAllocator();
+                rapidjson::Document::AllocatorType &allocator2 = document2.GetAllocator();
                 rapidjson::Value insertSong(rapidjson::kObjectType);
 
                 if (!found) {

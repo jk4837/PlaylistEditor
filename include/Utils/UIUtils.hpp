@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "logging.hpp"
+#include "CustomTypes/Logging.hpp"
 #include "CustomTypes/DoubleClickIconButton.hpp"
 
 #include "HMUI/InputFieldView.hpp"
@@ -14,18 +14,18 @@
 namespace PlaylistEditor::Utils
 {
 
-UnityEngine::Sprite* FileToSprite(const std::string_view &image_name);
+UnityEngine::Sprite *FileToSprite(const std::string_view &image_name);
 
-UnityEngine::UI::Button* CreateIconButton(const std::string_view &name, UnityEngine::Transform* parent, const std::string_view &buttonTemplate,
+UnityEngine::UI::Button *CreateIconButton(const std::string_view &name, UnityEngine::Transform *parent, const std::string_view &buttonTemplate,
                                           const UnityEngine::Vector2 &anchoredPosition, const UnityEngine::Vector2 &sizeDelta,
-                                          const std::function<void(void)> &onClick, UnityEngine::Sprite* icon, const std::string_view &hint);
+                                          const std::function<void(void)> &onClick, UnityEngine::Sprite *icon, const std::string_view &hint);
 
-HMUI::InputFieldView* CreateStringInput(UnityEngine::Transform* parent, const StringW &settingsName, const StringW &currentValue,
+HMUI::InputFieldView *CreateStringInput(UnityEngine::Transform *parent, const StringW &settingsName, const StringW &currentValue,
                                         const UnityEngine::Vector2 &anchoredPosition, const float width,
                                         const std::function<void(StringW)> &onEnter);
 
 template <class T>
-constexpr ArrayW<T> listToArrayW(::System::Collections::Generic::IReadOnlyList_1<T>* list) {
+constexpr ArrayW<T> listToArrayW(::System::Collections::Generic::IReadOnlyList_1<T> *list) {
     return ArrayW<T>(reinterpret_cast<Array<T>*>(list));
 }
 

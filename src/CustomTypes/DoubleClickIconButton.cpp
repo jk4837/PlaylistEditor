@@ -1,6 +1,6 @@
 #include "CustomTypes/DoubleClickIconButton.hpp"
 
-#include "logging.hpp"
+#include "CustomTypes/Logging.hpp"
 #include "Utils/UIUtils.hpp"
 #include "Utils/Utils.hpp"
 
@@ -10,9 +10,9 @@
 namespace PlaylistEditor
 {
 
-DoubleClickIconButton::DoubleClickIconButton(const std::string_view &name, UnityEngine::Transform* parent, const std::string_view &buttonTemplate,
-                                            const UnityEngine::Vector2 &anchoredPosition, const UnityEngine::Vector2 &sizeDelta,
-                                            const std::function<void(void)> &onDoubleClick, UnityEngine::Sprite* icon, const std::string_view &hint)
+DoubleClickIconButton::DoubleClickIconButton(const std::string_view &name, UnityEngine::Transform *parent, const std::string_view &buttonTemplate,
+                                             const UnityEngine::Vector2 &anchoredPosition, const UnityEngine::Vector2 &sizeDelta,
+                                             const std::function<void(void)> &onDoubleClick, UnityEngine::Sprite *icon, const std::string_view &hint)
 {
     std::function<void()> onClick = (std::function<void()>) [this, onDoubleClick] () {
         if (!this->imageView_) {
