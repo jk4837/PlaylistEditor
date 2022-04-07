@@ -85,11 +85,30 @@ typedef enum SCROLL_ACTION {
     NO_STAY, SCROLL_STAY, SCROLL_REMOVE_STAY, SCROLL_MOVE_UP, SCROLL_MOVE_DOWN
 } MOVE_ACTION_T;
 
-static bool IsSelectedCustomPack()
-{
-    return LevelFilteringNavigationController && LevelCollectionNavigationController && LevelCollectionNavigationController->dyn__levelPack() &&
-            GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::CustomSongs == LevelFilteringNavigationController->get_selectedLevelCategory() &&
-            CustomLevelID != LevelCollectionNavigationController->dyn__levelPack()->get_packID();
+
+static bool IsSelectedSoloOrPartyPlay() {
+    return FlowCoordinator &&
+           (il2cpp_utils::try_cast<GlobalNamespace::SoloFreePlayFlowCoordinator>(FlowCoordinator) ||
+            il2cpp_utils::try_cast<GlobalNamespace::PartyFreePlayFlowCoordinator>(FlowCoordinator)) ? true : false;
+}
+
+static bool IsSelectedCustomCategory() {
+    return IsSelectedSoloOrPartyPlay() &&
+           LevelFilteringNavigationController &&
+           (GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::CustomSongs == LevelFilteringNavigationController->get_selectedLevelCategory());
+}
+
+static bool IsSelectedCustomPack() {
+    return IsSelectedCustomCategory() &&
+           LevelCollectionNavigationController &&
+           LevelCollectionNavigationController->dyn__levelPack() &&
+           CustomLevelID != LevelCollectionNavigationController->dyn__levelPack()->get_packID();
+}
+
+static bool IsSelectedCustomLevel() {
+    return LevelCollectionTableView &&
+           LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel() &&
+           il2cpp_functions::class_is_assignable_from(classof(GlobalNamespace::CustomPreviewBeatmapLevel*), il2cpp_functions::object_get_class(reinterpret_cast<Il2CppObject*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel())));
 }
 
 static GlobalNamespace::CustomPreviewBeatmapLevel *GetSelectedCustomPreviewBeatmapLevel()
@@ -180,23 +199,20 @@ static void resetUI() {
 
 void adjustUI(bool forceDisable = false) // use forceDisable, casue don't know how to decide if now at main menu
 {
-    bool atSoloOrPartyPlay = (il2cpp_utils::try_cast<GlobalNamespace::SoloFreePlayFlowCoordinator>(FlowCoordinator) ||
-                              il2cpp_utils::try_cast<GlobalNamespace::PartyFreePlayFlowCoordinator>(FlowCoordinator)) ? true : false;
-    bool atCustomCategory = LevelFilteringNavigationController &&
-                            (GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::CustomSongs == LevelFilteringNavigationController->get_selectedLevelCategory());
+    bool atCustomCategory = IsSelectedCustomCategory();
     bool atCustomPack = IsSelectedCustomPack();
-    bool atCustomLevel = LevelCollectionTableView && LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel() &&
-                        il2cpp_functions::class_is_assignable_from(classof(GlobalNamespace::CustomPreviewBeatmapLevel*), il2cpp_functions::object_get_class(reinterpret_cast<Il2CppObject*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel())));
+    bool atCustomLevel = IsSelectedCustomLevel();
+    INFO("adjustUI: %s%s%s", atCustomCategory ? "atCustomCategory " : "", atCustomPack ? "atCustomPack " : "", atCustomLevel ? "atCustomLevel " : "");
     resetUI();
     // if (deleteButton) {  // manage by songloader
     //     deleteButton->get_gameObject()->set_active(true);
     // }
     if (deleteAndRemoveButton)
-        deleteAndRemoveButton->operator->()->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomLevel);
+        deleteAndRemoveButton->operator->()->get_gameObject()->set_active(!forceDisable && atCustomLevel);
     if (removeButton)
-        removeButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomLevel);
+        removeButton->get_gameObject()->set_active(!forceDisable && atCustomLevel);
     if (insertButton)
-        insertButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomLevel);
+        insertButton->get_gameObject()->set_active(!forceDisable && atCustomLevel);
 
     if (moveUpButton) {
         moveUpButton->get_gameObject()->set_active(!forceDisable && atCustomLevel);
@@ -215,52 +231,56 @@ void adjustUI(bool forceDisable = false) // use forceDisable, casue don't know h
         }
     }
     if (createListButton)
-        createListButton->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomCategory);
+        createListButton->get_gameObject()->set_active(!forceDisable && atCustomCategory);
     if (deleteListButton) {
-        deleteListButton->operator->()->get_gameObject()->set_active(!forceDisable && atSoloOrPartyPlay && atCustomCategory);
+        deleteListButton->operator->()->get_gameObject()->set_active(!forceDisable && atCustomCategory);
         if (!atCustomPack)
             deleteListButton->SetInteractable(false);
     }
 }
 
 static void createListActionButton() {
-    createListButton = CreateIconButton("CreateListButton", LevelFilteringNavigationController->get_transform(), "PracticeButton",
-                                        UnityEngine::Vector2(69.0f, -3.0f), UnityEngine::Vector2(10.0f, 7.0f), [] () {
-            if (!createListInput) {
-                auto screenContainer = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [](auto x) {
-                    return x->get_name()->Equals("ScreenContainer");
-                });
-                createListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
-                                    UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [] (StringW value) {
-                                        INFO("Enter %s", std::string(value).c_str());
-                                        // validate
-                                        auto annotatedBeatmapLevelCollections = listToArrayW(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
-                                        for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
-                                            std::string selectedPackName = annotatedBeatmapLevelCollections[i]->get_collectionName();
-                                            if (value != selectedPackName)
-                                                continue;
-                                            PlaylistEditor::Toast::GetInstance()->ShowMessage("List already exist");
-                                            return;
-                                        }
-                                        if (CreateFile(value)) {
-                                            RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
-                                            PlaylistEditor::Toast::GetInstance()->ShowMessage("Create new list");
-                                            createListInput->SetText("");
-                                        }
-                                        createListInput->get_gameObject()->set_active(false);
-                });
-                createListInput->get_gameObject()->set_active(true);
-                return;
-            }
-            createListInput->get_gameObject()->set_active(!createListInput->get_gameObject()->get_active());
-        }, FileToSprite("InsertIcon"), "Create List");
-    deleteListButton = new PlaylistEditor::DoubleClickIconButton("DeleteListButton", LevelFilteringNavigationController->get_transform(), "PracticeButton",
-                                        UnityEngine::Vector2(69.0f, 3.0f), UnityEngine::Vector2(10.0f, 7.0f), [] () {
-                            if (DeleteFile(GetPlaylistPath(GetSelectedPackID()))) {
-                                PlaylistEditor::Toast::GetInstance()->ShowMessage("Delete selected list");
-                                RefreshAndStayList(SCROLL_ACTION::NO_STAY);
-                            }
-                        }, FileToSprite("DeleteIcon"), "Delete List");
+    if (!createListButton) {
+        createListButton = CreateIconButton("CreateListButton", LevelFilteringNavigationController->get_transform(), "PracticeButton",
+                                            UnityEngine::Vector2(69.0f, -3.0f), UnityEngine::Vector2(10.0f, 7.0f), [] () {
+                if (!createListInput) {
+                    auto screenContainer = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [](auto x) {
+                        return x->get_name()->Equals("ScreenContainer");
+                    });
+                    createListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
+                                        UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [] (StringW value) {
+                                            INFO("Enter %s", std::string(value).c_str());
+                                            // validate
+                                            auto annotatedBeatmapLevelCollections = listToArrayW(AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+                                            for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
+                                                std::string selectedPackName = annotatedBeatmapLevelCollections[i]->get_collectionName();
+                                                if (value != selectedPackName)
+                                                    continue;
+                                                PlaylistEditor::Toast::GetInstance()->ShowMessage("List already exist");
+                                                return;
+                                            }
+                                            if (CreateFile(value)) {
+                                                RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
+                                                PlaylistEditor::Toast::GetInstance()->ShowMessage("Create new list");
+                                                createListInput->SetText("");
+                                            }
+                                            createListInput->get_gameObject()->set_active(false);
+                    });
+                    createListInput->get_gameObject()->set_active(true);
+                    return;
+                }
+                createListInput->get_gameObject()->set_active(!createListInput->get_gameObject()->get_active());
+            }, FileToSprite("InsertIcon"), "Create List");
+    }
+    if (!deleteListButton) {
+        deleteListButton = new PlaylistEditor::DoubleClickIconButton("DeleteListButton", LevelFilteringNavigationController->get_transform(), "PracticeButton",
+                                            UnityEngine::Vector2(69.0f, 3.0f), UnityEngine::Vector2(10.0f, 7.0f), [] () {
+                                if (DeleteFile(GetPlaylistPath(GetSelectedPackID()))) {
+                                    PlaylistEditor::Toast::GetInstance()->ShowMessage("Delete selected list");
+                                    RefreshAndStayList(SCROLL_ACTION::NO_STAY);
+                                }
+                            }, FileToSprite("DeleteIcon"), "Delete List");
+    }
 }
 
 MAKE_HOOK_MATCH(FlowCoordinator_PresentFlowCoordinator, &HMUI::FlowCoordinator::PresentFlowCoordinator, void, HMUI::FlowCoordinator* self, HMUI::FlowCoordinator* flowCoordinator, System::Action* finishedCallback, HMUI::ViewController::AnimationDirection animationDirection, bool immediately, bool replaceTopViewController)
