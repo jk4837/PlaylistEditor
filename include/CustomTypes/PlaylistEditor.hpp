@@ -39,6 +39,7 @@ private:
     bool IsSelectedCustomPack();
     bool IsSelectedCustomLevel();
     GlobalNamespace::CustomPreviewBeatmapLevel *GetSelectedCustomPreviewBeatmapLevel();
+    int GetSelectedCustomLevelIdx();
     const std::string GetSelectedPackID();
 
     void AcquiredObject();

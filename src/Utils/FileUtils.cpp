@@ -56,11 +56,13 @@ bool LoadFile(const std::string &path, rapidjson::Document &document) {
     return success;
 }
 
-bool FindSongIdx(const rapidjson::Document &document, const std::string &selectedLevelID, int &idx) {
+bool FindSongIdx(const rapidjson::Document &document,
+                 const int selectedLevelIdx, const std::string &selectedLevelID, int &idx) {
     const auto selectedHash = selectedLevelID.substr(CustomLevelPrefixID.length());
     try {
         const auto &songs = document.GetObject()["songs"].GetArray();
-        for (rapidjson::SizeType i = 0; i < songs.Size(); i++) {
+        // selectedLevelIdx may greater then real index in list, cause list can contain not found song
+        for (rapidjson::SizeType i = selectedLevelIdx; i < songs.Size(); i++) {
             if (!songs[i].IsObject())
                 throw std::invalid_argument("invalid song object");
             if (!songs[i].HasMember("hash") || !songs[i]["hash"].IsString())
@@ -70,6 +72,40 @@ bool FindSongIdx(const rapidjson::Document &document, const std::string &selecte
             idx = i;
             return true;
         }
+        // find again upper if not found
+        for (rapidjson::SizeType i = std::min(selectedLevelIdx-1, static_cast<int>(songs.Size())-1); i >= 0; i--) {
+            if (!songs[i].IsObject())
+                throw std::invalid_argument("invalid song object");
+            if (!songs[i].HasMember("hash") || !songs[i]["hash"].IsString())
+                throw std::invalid_argument("invalid hash in song object");
+            if (0 != strcasecmp(songs[i]["hash"].GetString(), selectedHash.c_str()))
+                continue;
+            idx = i;
+            return true;
+        }
+    } catch (const std::exception &e) {
+        PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
+        ERROR("Error parsing playlist: %s", e.what());
+    }
+    return false;
+}
+
+bool FindAllSongIdx(const rapidjson::Document &document,
+                    const std::string &selectedLevelID, std::vector<int> &idxs) {
+    try {
+        const auto selectedHash = selectedLevelID.substr(CustomLevelPrefixID.length());
+        const auto &songs = document.GetObject()["songs"].GetArray();
+
+        for (rapidjson::SizeType i = 0; i < songs.Size(); i++) {
+            if (!songs[i].IsObject())
+                throw std::invalid_argument("invalid song object");
+            if (!songs[i].HasMember("hash") || !songs[i]["hash"].IsString())
+                throw std::invalid_argument("invalid hash in song object");
+            if (0 != strcasecmp(songs[i]["hash"].GetString(), selectedHash.c_str()))
+                continue;
+            idxs.push_back(i);
+        }
+        return idxs.size() > 0;
     } catch (const std::exception &e) {
         PlaylistEditor::Toast::GetInstance()->ShowMessage(e.what());
         ERROR("Error parsing playlist: %s", e.what());
@@ -142,7 +178,7 @@ static std::string GetCoverImageBase64String(GlobalNamespace::CustomPreviewBeatm
     return "data:image/png;base64," + System::Convert::ToBase64String(byteArray);
 }
 
-bool UpdateFile(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const std::string &path,
+bool UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const std::string &path,
                 const FILE_ACTION act, const std::string &insertPath) {
     try {
         if (!selectedLevel)
@@ -154,8 +190,6 @@ bool UpdateFile(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const
 
         int idx = 0;
         const std::string selectedLevelID = selectedLevel->get_levelID();
-        const bool found = !path.empty() && FindSongIdx(document, selectedLevelID, idx);
-
         const auto &songs = document.GetObject()["songs"].GetArray();
         switch (act) {
             case ITEM_INSERT:
@@ -164,15 +198,16 @@ bool UpdateFile(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const
                 rapidjson::Document::AllocatorType &allocator2 = document2.GetAllocator();
                 rapidjson::Value insertSong(rapidjson::kObjectType);
 
-                if (!found) {
+                if (!path.empty() && FindSongIdx(document, selectedLevelIdx, selectedLevelID, idx))
+                    insertSong = songs[idx];
+                else {
                     insertSong.SetObject();
                     insertSong.AddMember("songName", std::string(selectedLevel->get_songName()), allocator2);
                     insertSong.AddMember("levelAuthorName", std::string(selectedLevel->get_levelAuthorName()), allocator2);
                     insertSong.AddMember("hash", selectedLevelID.substr(CustomLevelPrefixID.length()), allocator2);
                     insertSong.AddMember("levelid", selectedLevelID, allocator2);
                     insertSong.AddMember("uploader", std::string(selectedLevel->get_levelAuthorName()), allocator2);
-                } else
-                    insertSong = songs[idx];
+                }
 
                 if (!LoadFile(insertPath, document2))
                     throw std::invalid_argument("failed to load file which want to insert to");
@@ -186,25 +221,37 @@ bool UpdateFile(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const
             }
             break;
             case ITEM_REMOVE:
+            case ITEM_REMOVE_ALL:
                 if (path.empty()) {
                     bool has_remove = false;
                     if (playlists.empty())
                         GetPlaylistPath();
                     for (auto it : playlists)
-                        has_remove |= UpdateFile(selectedLevel, it.second, ITEM_REMOVE);
+                        has_remove |= UpdateFile(selectedLevelIdx, selectedLevel, it.second, ITEM_REMOVE_ALL);
                     if (!has_remove)
                         return false;
-                } else if (!found) {
-                    ERROR("Failed to find %s in playlist dir %s", selectedLevelID.c_str(), path.c_str());
-                    return false;
                 } else {
-                    songs.Erase(songs.Begin() + idx);
-                    if (!WriteFile(path, document))
-                        throw std::invalid_argument("failed to write file");
+                    if (ITEM_REMOVE == act) {
+                        if (!FindSongIdx(document, selectedLevelIdx, selectedLevelID, idx)) {
+                            ERROR("Failed to find %s in playlist dir %s", selectedLevelID.c_str(), path.c_str());
+                            return false;
+                        }
+                        songs.Erase(songs.Begin() + idx);
+                        if (!WriteFile(path, document))
+                            throw std::invalid_argument("failed to write file");
+                    } else if (ITEM_REMOVE_ALL == act) {
+                        std::vector<int> idxs;
+                        if (!FindAllSongIdx(document, selectedLevelID, idxs))
+                            return false;
+                        for (int i = idxs.size()-1; i >= 0; i--)
+                            songs.Erase(songs.Begin() + idxs[i]);
+                        if (!WriteFile(path, document))
+                            throw std::invalid_argument("failed to write file");
+                    }
                 }
                 break;
             case ITEM_MOVE_DOWN:
-                if (!found) {
+                if (path.empty() || !FindSongIdx(document, selectedLevelIdx, selectedLevelID, idx)) {
                     ERROR("Failed to find %s in playlist dir %s", selectedLevelID.c_str(), path.c_str());
                     return false;
                 }
@@ -215,7 +262,7 @@ bool UpdateFile(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const
                     throw std::invalid_argument("failed to write file");
                 break;
             case ITEM_MOVE_UP:
-                if (!found) {
+                if (path.empty() || !FindSongIdx(document, selectedLevelIdx, selectedLevelID, idx)) {
                     ERROR("Failed to find %s in playlist dir %s", selectedLevelID.c_str(), path.c_str());
                     return false;
                 }
