@@ -95,7 +95,8 @@ void PlaylistEditor::RegistEvent()
             INFO("LevelCategoryViewController SelectLevelCategoryEvent");
             this->AdjustUI();
         };
-        this->LevelCategoryViewController->add_didSelectLevelCategoryEvent(Utils::MakeDelegate<System::Action_2<GlobalNamespace::SelectLevelCategoryViewController*, GlobalNamespace::SelectLevelCategoryViewController::LevelCategory>*>(didSelectLevelCategoryEventFun));
+        this->LevelCategoryViewController->add_didSelectLevelCategoryEvent(
+            Utils::MakeDelegate<System::Action_2<GlobalNamespace::SelectLevelCategoryViewController*, GlobalNamespace::SelectLevelCategoryViewController::LevelCategory>*>(didSelectLevelCategoryEventFun));
     }
 
     if (!this->LevelCollectionNavigationController->dyn_didSelectLevelPackEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
@@ -104,7 +105,8 @@ void PlaylistEditor::RegistEvent()
             INFO("LevelCollectionNavigationController SelectLevelPackEvent"); // select to level list header
             this->AdjustUI();
         };
-        this->LevelCollectionNavigationController->add_didSelectLevelPackEvent(Utils::MakeDelegate<System::Action_2<GlobalNamespace::LevelCollectionNavigationController*, GlobalNamespace::IBeatmapLevelPack*>*>(didSelectLevelPackEventFun));
+        this->LevelCollectionNavigationController->add_didSelectLevelPackEvent(
+            Utils::MakeDelegate<System::Action_2<GlobalNamespace::LevelCollectionNavigationController*, GlobalNamespace::IBeatmapLevelPack*>*>(didSelectLevelPackEventFun));
     }
 
     if (!this->AnnotatedBeatmapLevelCollectionsViewController->dyn_didOpenBeatmapLevelCollectionsEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
@@ -113,7 +115,8 @@ void PlaylistEditor::RegistEvent()
             INFO("AnnotatedBeatmapLevelCollectionsViewController OpenBeatmapLevelCollectionsEvent");
             this->AdjustUI();
         };
-        this->AnnotatedBeatmapLevelCollectionsViewController->add_didOpenBeatmapLevelCollectionsEvent(Utils::MakeDelegate<System::Action*>(didOpenBeatmapLevelCollectionsEventFun));
+        this->AnnotatedBeatmapLevelCollectionsViewController->add_didOpenBeatmapLevelCollectionsEvent(
+            Utils::MakeDelegate<System::Action*>(didOpenBeatmapLevelCollectionsEventFun));
     }
 
     if (!this->AnnotatedBeatmapLevelCollectionsViewController->dyn_didSelectAnnotatedBeatmapLevelCollectionEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
@@ -122,7 +125,8 @@ void PlaylistEditor::RegistEvent()
             INFO("AnnotatedBeatmapLevelCollectionsViewController SelectAnnotatedBeatmapLevelCollectionEvent");
             this->AdjustUI();
         };
-        this->AnnotatedBeatmapLevelCollectionsViewController->add_didSelectAnnotatedBeatmapLevelCollectionEvent(Utils::MakeDelegate<System::Action_1<GlobalNamespace::IAnnotatedBeatmapLevelCollection*>*>(didSelectAnnotatedBeatmapLevelCollectionEventFun));
+        this->AnnotatedBeatmapLevelCollectionsViewController->add_didSelectAnnotatedBeatmapLevelCollectionEvent(
+            Utils::MakeDelegate<System::Action_1<GlobalNamespace::IAnnotatedBeatmapLevelCollection*>*>(didSelectAnnotatedBeatmapLevelCollectionEventFun));
     }
 }
 
@@ -170,30 +174,30 @@ const std::string PlaylistEditor::GetSelectedPackID()
 void PlaylistEditor::CreateListActionButton()
 {
     if (!this->createListButton)
-        this->createListButton = CreateIconButton("CreateListButton", this->LevelFilteringNavigationController->get_transform(), "PracticeButton",
-                                            UnityEngine::Vector2(69.0f, -3.0f), UnityEngine::Vector2(10.0f, 7.0f), [this] () {
+        this->createListButton = new IconButton("CreateListButton", this->LevelFilteringNavigationController->get_transform(), "PracticeButton",
+                                                UnityEngine::Vector2(69.0f, -3.0f), UnityEngine::Vector2(10.0f, 7.0f), [this] () {
             if (!this->createListInput) {
                 auto screenContainer = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([] (auto x) {
                     return x->get_name()->Equals("ScreenContainer");
                 });
                 this->createListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
-                                                    UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [this] (StringW value) {
-                                    INFO("Enter %s", std::string(value).c_str());
-                                    // validate
-                                    auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
-                                    for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
-                                        std::string selectedPackName = annotatedBeatmapLevelCollections[i]->get_collectionName();
-                                        if (value != selectedPackName)
-                                            continue;
-                                        Toast::GetInstance()->ShowMessage("List already exist");
-                                        return;
-                                    }
-                                    if (CreateFile(value)) {
-                                        this->RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
-                                        Toast::GetInstance()->ShowMessage("Create new list");
-                                        this->createListInput->SetText("");
-                                    }
-                                    this->createListInput->get_gameObject()->set_active(false);
+                                                          UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [this] (StringW value) {
+                                            INFO("Enter %s", std::string(value).c_str());
+                                            // validate
+                                            auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+                                            for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
+                                                std::string selectedPackName = annotatedBeatmapLevelCollections[i]->get_collectionName();
+                                                if (value != selectedPackName)
+                                                    continue;
+                                                Toast::GetInstance()->ShowMessage("List already exist");
+                                                return;
+                                            }
+                                            if (CreateFile(value)) {
+                                                this->RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
+                                                Toast::GetInstance()->ShowMessage("Create new list");
+                                                this->createListInput->SetText("");
+                                            }
+                                            this->createListInput->get_gameObject()->set_active(false);
                 });
                 this->createListInput->get_gameObject()->set_active(true);
                 return;
@@ -203,11 +207,11 @@ void PlaylistEditor::CreateListActionButton()
 
     if (!this->deleteListButton)
         this->deleteListButton = new DoubleClickIconButton("DeleteListButton", this->LevelFilteringNavigationController->get_transform(), "PracticeButton",
-                                                                     UnityEngine::Vector2(69.0f, 3.0f), UnityEngine::Vector2(10.0f, 7.0f), [this] () {
-                                if (DeleteFile(GetPlaylistPath(this->GetSelectedPackID()))) {
-                                    Toast::GetInstance()->ShowMessage("Delete selected list");
-                                    this->RefreshAndStayList(SCROLL_ACTION::NO_STAY);
-                                }
+                                                           UnityEngine::Vector2(69.0f, 3.0f), UnityEngine::Vector2(10.0f, 7.0f), [this] () {
+                                    if (DeleteFile(GetPlaylistPath(this->GetSelectedPackID()))) {
+                                        Toast::GetInstance()->ShowMessage("Delete selected list");
+                                        this->RefreshAndStayList(SCROLL_ACTION::NO_STAY);
+                                    }
         }, FileToSprite("DeleteIcon"), "Delete List");
 }
 
@@ -218,21 +222,17 @@ void PlaylistEditor::ResetUI()
     if (this->deleteAndRemoveButton)
         this->deleteAndRemoveButton->ResetUI();
     if (this->moveUpButton)
-        this->moveUpButton->set_interactable(true);
-    if (this->moveUpButtonImageView)
-        this->moveUpButtonImageView->set_color(UnityEngine::Color::get_white());
+        this->moveUpButton->ResetUI();
     if (this->moveDownButton)
-        this->moveDownButton->set_interactable(true);
-    if (this->moveDownButtonImageView)
-        this->moveDownButtonImageView->set_color(UnityEngine::Color::get_white());
+        this->moveDownButton->ResetUI();
     if (this->listModal)
         this->listModal->get_gameObject()->set_active(false);
     if (this->moveDownButton)
-        this->moveDownButton->set_interactable(true);
+        this->moveDownButton->ResetUI();
     if (this->createListInput)
         this->createListInput->get_gameObject()->set_active(false);
     if (this->deleteListButton) {
-        this->deleteListButton->SetInteractable(true);
+        this->deleteListButton->ResetUI();
     }
 }
 
@@ -254,6 +254,7 @@ void PlaylistEditor::CreateSongActionButton() {
         });
     });
 
+    // create new button
     auto posX = -22.5f;
     this->deleteAndRemoveButton = new DoubleClickIconButton("DeleteAndRemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(20.0f,7.0f), [this] () {
@@ -267,11 +268,11 @@ void PlaylistEditor::CreateSongActionButton() {
                 }
             );
         }, FileToSprite("DeleteAndRemoveIcon"), "Delete and Remove Song from List");
-    this->deleteAndRemoveButton->operator->()->get_gameObject()->set_active(false);
+    this->deleteAndRemoveButton->SetActive(false);
     // deleteAndRemoveButton->get_transform()->SetAsLastSibling();
 
     posX += 15.0f + 1.25f ;
-    this->removeButton = CreateIconButton("RemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+    this->removeButton = new IconButton("RemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
             if (UpdateFile(this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackID()), FILE_ACTION::ITEM_REMOVE)) {
                 Toast::GetInstance()->ShowMessage(this->IsSelectedCustomPack() ? "Remove song from the list" : "Remove song from all list");
@@ -279,39 +280,33 @@ void PlaylistEditor::CreateSongActionButton() {
             } else
                 Toast::GetInstance()->ShowMessage("Song isn't in any list");
         }, FileToSprite("RemoveIcon"), "Remove Song from List");
-    this->removeButton->get_gameObject()->set_active(false);
-    this->removeButton->get_transform()->SetAsLastSibling();
+    this->removeButton->SetActive(false);
+    // this->removeButton->get_transform()->SetAsLastSibling();
 
     posX += 10.0f + 1.25f;
-    this->moveUpButton = CreateIconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+    this->moveUpButton = new IconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
             if (UpdateFile(this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_UP)) {
                 Toast::GetInstance()->ShowMessage("Move up song");
                 this->RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_UP);
             }
         }, FileToSprite("MoveUpIcon"), "Move Up Song from List");
-    this->moveUpButton->get_gameObject()->set_active(false);
-    this->moveUpButtonImageView = this->moveUpButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
-        return "Icon" == x->get_name();
-    });
-    this->moveUpButton->get_transform()->SetAsLastSibling();
+    this->moveUpButton->SetActive(false);
+    // this->moveUpButton->get_transform()->SetAsLastSibling();
 
     posX += 10.0f + 1.25f;
-    this->moveDownButton = CreateIconButton("MoveDownFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+    this->moveDownButton = new IconButton("MoveDownFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
             if (UpdateFile(this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_DOWN)) {
                 Toast::GetInstance()->ShowMessage("Move down song");
                 this->RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_DOWN);
             }
         }, FileToSprite("MoveDownIcon"), "Move Down Song from List");
-    this->moveDownButton->get_gameObject()->set_active(false);
-    this->moveDownButtonImageView = this->moveDownButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([&] (auto x) -> bool {
-        return "Icon" == x->get_name();
-    });
-    this->moveDownButton->get_transform()->SetAsLastSibling();
+    this->moveDownButton->SetActive(false);
+    // this->moveDownButton->get_transform()->SetAsLastSibling();
 
     posX += 10.0f + 1.25f;
-    this->insertButton = CreateIconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
+    this->insertButton = new IconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
             if (this->listModal && this->listModal->get_gameObject()->get_active()) {
                 this->listModal->get_gameObject()->set_active(false);
@@ -342,7 +337,7 @@ void PlaylistEditor::CreateSongActionButton() {
                 this->listModalItem.push_back(QuestUI::BeatSaberUI::CreateClickableText(this->listContainer->get_transform(), selectedPackName, false, [this, selectedPackName] () {
                     std::string selectedPackId = CustomLevelPackPrefixID + selectedPackName;
                     this->listModal->get_gameObject()->set_active(false);
-                    this->insertButton->set_interactable(true);
+                    this->insertButton->SetInteractable(true);
                     if (UpdateFile(this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackID()), FILE_ACTION::ITEM_INSERT, GetPlaylistPath(selectedPackId))) {
                         Toast::GetInstance()->ShowMessage("Insert song to selected list");
                         this->RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
@@ -351,8 +346,8 @@ void PlaylistEditor::CreateSongActionButton() {
             }
             this->listModal->get_gameObject()->set_active(true);
         }, FileToSprite("InsertIcon"), "Insert to List");
-    this->insertButton->get_gameObject()->set_active(false);
-    this->insertButton->get_transform()->SetAsLastSibling();
+    this->insertButton->SetActive(false);
+    // this->insertButton->get_transform()->SetAsLastSibling();
 }
 
 void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casue don't know how to decide if now at main menu
@@ -363,35 +358,29 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
     // INFO("playlistEditor->AdjustUI: %s%s%s", atCustomCategory ? "atCustomCategory " : "", atCustomPack ? "atCustomPack " : "", atCustomLevel ? "atCustomLevel " : "");
     this->ResetUI();
     // if (deleteButton) {  // manage by songloader
-    //     deleteButton->get_gameObject()->set_active(true);
+    //     deleteButton->SetActive(true);
     // }
     if (this->deleteAndRemoveButton)
-        this->deleteAndRemoveButton->operator->()->get_gameObject()->set_active(!forceDisable && atCustomLevel);
+        this->deleteAndRemoveButton->SetActive(!forceDisable && atCustomLevel);
     if (this->removeButton)
-        this->removeButton->get_gameObject()->set_active(!forceDisable && atCustomLevel);
+        this->removeButton->SetActive(!forceDisable && atCustomLevel);
     if (this->insertButton)
-        this->insertButton->get_gameObject()->set_active(!forceDisable && atCustomLevel);
+        this->insertButton->SetActive(!forceDisable && atCustomLevel);
 
     if (this->moveUpButton) {
-        this->moveUpButton->get_gameObject()->set_active(!forceDisable && atCustomLevel);
-        if (!atCustomPack) {
-            this->moveUpButton->set_interactable(false);
-            if (this->moveUpButtonImageView)
-                this->moveUpButtonImageView->set_color(UnityEngine::Color::get_gray());
-        }
+        this->moveUpButton->SetActive(!forceDisable && atCustomLevel);
+        if (!atCustomPack)
+            this->moveUpButton->SetInteractable(false);
     }
     if (this->moveDownButton) {
-        this->moveDownButton->get_gameObject()->set_active(!forceDisable && atCustomLevel);
-        if (!atCustomPack) {
-            this->moveDownButton->set_interactable(false);
-            if (this->moveDownButtonImageView)
-                this->moveDownButtonImageView->set_color(UnityEngine::Color::get_gray());
-        }
+        this->moveDownButton->SetActive(!forceDisable && atCustomLevel);
+        if (!atCustomPack)
+            this->moveDownButton->SetInteractable(false);
     }
     if (this->createListButton)
-        this->createListButton->get_gameObject()->set_active(!forceDisable && atCustomCategory);
+        this->createListButton->SetActive(!forceDisable && atCustomCategory);
     if (this->deleteListButton) {
-        this->deleteListButton->operator->()->get_gameObject()->set_active(!forceDisable && atCustomCategory);
+        this->deleteListButton->SetActive(!forceDisable && atCustomCategory);
         if (!atCustomPack)
             this->deleteListButton->SetInteractable(false);
     }
