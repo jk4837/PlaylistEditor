@@ -3,7 +3,9 @@
 #include "GlobalNamespace/CustomPreviewBeatmapLevel.hpp"
 #include "GlobalNamespace/IAnnotatedBeatmapLevelCollection.hpp"
 #include "GlobalNamespace/IBeatmapLevelCollection.hpp"
+#include "GlobalNamespace/LevelCollectionViewController.hpp"
 #include "GlobalNamespace/LevelSelectionFlowCoordinator.hpp"
+#include "GlobalNamespace/LevelSelectionNavigationController.hpp"
 #include "GlobalNamespace/PartyFreePlayFlowCoordinator.hpp"
 #include "GlobalNamespace/SelectLevelCategoryViewController.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
@@ -57,29 +59,26 @@ void PlaylistEditor::AcquiredObject()
 {
     auto LevelSelectionFlowCoordinator = il2cpp_utils::cast<GlobalNamespace::LevelSelectionFlowCoordinator>(this->FlowCoordinator);
     // gather flow coordinator elements
-    this->LevelSelectionNavigationController = LevelSelectionFlowCoordinator->dyn_levelSelectionNavigationController();
-    INFO("Acquired LevelSelectionNavigationController [%d]", this->LevelSelectionNavigationController->GetInstanceID());
+    auto LevelSelectionNavigationController = LevelSelectionFlowCoordinator->dyn_levelSelectionNavigationController();
+    INFO("Acquired LevelSelectionNavigationController [%d]", LevelSelectionNavigationController->GetInstanceID());
 
-    this->LevelFilteringNavigationController = this->LevelSelectionNavigationController->dyn__levelFilteringNavigationController();
+    this->LevelFilteringNavigationController = LevelSelectionNavigationController->dyn__levelFilteringNavigationController();
     INFO("Acquired LevelFilteringNavigationController [%d]", this->LevelFilteringNavigationController->GetInstanceID());
 
-    this->LevelCollectionNavigationController = this->LevelSelectionNavigationController->dyn__levelCollectionNavigationController();
+    this->LevelCollectionNavigationController = LevelSelectionNavigationController->dyn__levelCollectionNavigationController();
     INFO("Acquired LevelCollectionNavigationController [%d]", this->LevelCollectionNavigationController->GetInstanceID());
 
-    this->LevelCollectionViewController = this->LevelCollectionNavigationController->dyn__levelCollectionViewController();
-    INFO("Acquired LevelCollectionViewController [%d]", this->LevelCollectionViewController->GetInstanceID());
+    auto LevelCollectionViewController = this->LevelCollectionNavigationController->dyn__levelCollectionViewController();
+    INFO("Acquired LevelCollectionViewController [%d]", LevelCollectionViewController->GetInstanceID());
 
-    this->LevelDetailViewController = this->LevelCollectionNavigationController->dyn__levelDetailViewController();
-    INFO("Acquired LevelDetailViewController [%d]", this->LevelDetailViewController->GetInstanceID());
+    auto LevelDetailViewController = this->LevelCollectionNavigationController->dyn__levelDetailViewController();
+    INFO("Acquired LevelDetailViewController [%d]", LevelDetailViewController->GetInstanceID());
 
-    this->LevelCollectionTableView = this->LevelCollectionViewController->dyn__levelCollectionTableView();
+    this->LevelCollectionTableView = LevelCollectionViewController->dyn__levelCollectionTableView();
     INFO("Acquired LevelPackLevelsTableView [%d]", this->LevelCollectionTableView->GetInstanceID());
 
-    this->StandardLevelDetailView = this->LevelDetailViewController->dyn__standardLevelDetailView();
+    this->StandardLevelDetailView = LevelDetailViewController->dyn__standardLevelDetailView();
     INFO("Acquired StandardLevelDetailView [%d]", this->StandardLevelDetailView->GetInstanceID());
-
-    this->BeatmapCharacteristicSelectionViewController = this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController();
-    INFO("Acquired BeatmapCharacteristicSegmentedControlController [%d]", this->BeatmapCharacteristicSelectionViewController->GetInstanceID());
 
     this->AnnotatedBeatmapLevelCollectionsViewController = this->LevelFilteringNavigationController->dyn__annotatedBeatmapLevelCollectionsViewController();
     INFO("Acquired AnnotatedBeatmapLevelCollectionsViewController from LevelFilteringNavigationController [%d]", this->AnnotatedBeatmapLevelCollectionsViewController->GetInstanceID());

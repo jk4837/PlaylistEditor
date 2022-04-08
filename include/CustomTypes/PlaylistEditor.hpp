@@ -3,13 +3,10 @@
 #include "Utils/UIUtils.hpp"
 
 #include "GlobalNamespace/AnnotatedBeatmapLevelCollectionsViewController.hpp"
-#include "GlobalNamespace/BeatmapCharacteristicSegmentedControlController.hpp"
 #include "GlobalNamespace/CustomPreviewBeatmapLevel.hpp"
 #include "GlobalNamespace/LevelCollectionNavigationController.hpp"
 #include "GlobalNamespace/LevelCollectionTableView.hpp"
-#include "GlobalNamespace/LevelCollectionViewController.hpp"
 #include "GlobalNamespace/LevelFilteringNavigationController.hpp"
-#include "GlobalNamespace/LevelSelectionNavigationController.hpp"
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
 #include "HMUI/FlowCoordinator.hpp"
 #include "HMUI/ModalView.hpp"
@@ -51,15 +48,11 @@ private:
 
     HMUI::FlowCoordinator *FlowCoordinator = nullptr;
     GlobalNamespace::AnnotatedBeatmapLevelCollectionsViewController *AnnotatedBeatmapLevelCollectionsViewController = nullptr;
-    GlobalNamespace::BeatmapCharacteristicSegmentedControlController *BeatmapCharacteristicSelectionViewController = nullptr;
     GlobalNamespace::LevelCollectionNavigationController *LevelCollectionNavigationController = nullptr;
     GlobalNamespace::LevelCollectionTableView *LevelCollectionTableView = nullptr;
-    GlobalNamespace::LevelCollectionViewController *LevelCollectionViewController = nullptr;
     GlobalNamespace::LevelFilteringNavigationController *LevelFilteringNavigationController = nullptr;
-    GlobalNamespace::LevelSelectionNavigationController *LevelSelectionNavigationController = nullptr;
     GlobalNamespace::SelectLevelCategoryViewController *LevelCategoryViewController = nullptr;
     GlobalNamespace::StandardLevelDetailView *StandardLevelDetailView = nullptr;
-    GlobalNamespace::StandardLevelDetailViewController *LevelDetailViewController = nullptr;
 
     DoubleClickIconButton *deleteAndRemoveButton = nullptr;
     DoubleClickIconButton *deleteButton = nullptr;
