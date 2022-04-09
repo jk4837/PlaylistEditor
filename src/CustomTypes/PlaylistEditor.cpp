@@ -53,6 +53,7 @@ void PlaylistEditor::Init(HMUI::FlowCoordinator *flowCoordinator)
 
     this->AcquiredObject();
     this->RegistEvent();
+    ReloadPlaylistPath();
 }
 
 void PlaylistEditor::AcquiredObject()
@@ -179,6 +180,11 @@ const std::string PlaylistEditor::GetSelectedPackID()
     return this->IsSelectedCustomPack() ? this->LevelCollectionNavigationController->dyn__levelPack()->get_packID() : "";
 }
 
+int PlaylistEditor::GetSelectedPackIdx()
+{
+    return this->IsSelectedCustomCategory() ? AnnotatedBeatmapLevelCollectionsViewController->get_selectedItemIndex() : 0;
+}
+
 void PlaylistEditor::CreateListActionButton()
 {
     if (!this->createListButton)
@@ -201,6 +207,7 @@ void PlaylistEditor::CreateListActionButton()
                                                 return;
                                             }
                                             if (CreateFile(value)) {
+                                                ReloadPlaylistPath();
                                                 this->RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
                                                 Toast::GetInstance()->ShowMessage("Create new list");
                                                 this->createListInput->SetText("");
@@ -216,7 +223,8 @@ void PlaylistEditor::CreateListActionButton()
     if (!this->deleteListButton)
         this->deleteListButton = new DoubleClickIconButton("DeleteListButton", this->LevelFilteringNavigationController->get_transform(), "PracticeButton",
                                                            UnityEngine::Vector2(69.0f, 3.0f), UnityEngine::Vector2(10.0f, 7.0f), [this] () {
-                                    if (DeleteFile(GetPlaylistPath(this->GetSelectedPackID()))) {
+                                    if (DeleteFile(GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()))) {
+                                        ReloadPlaylistPath();
                                         Toast::GetInstance()->ShowMessage("Delete selected list");
                                         this->RefreshAndStayList(SCROLL_ACTION::NO_STAY);
                                     }
@@ -268,7 +276,7 @@ void PlaylistEditor::CreateSongActionButton() {
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(20.0f,7.0f), [this] () {
             GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
             RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [this] {
-                    if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackID()), FILE_ACTION::ITEM_REMOVE))
+                    if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_REMOVE))
                         Toast::GetInstance()->ShowMessage(this->IsSelectedCustomPack() ? "Delete song and remove from the list" : "Delete song and remove from all list" );
                     else
                         Toast::GetInstance()->ShowMessage("Delete song");
@@ -282,7 +290,7 @@ void PlaylistEditor::CreateSongActionButton() {
     posX += 15.0f + 1.25f ;
     this->removeButton = new IconButton("RemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-            if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackID()), FILE_ACTION::ITEM_REMOVE)) {
+            if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_REMOVE)) {
                 Toast::GetInstance()->ShowMessage(this->IsSelectedCustomPack() ? "Remove song from the list" : "Remove song from all list");
                 this->RefreshAndStayList(this->IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
             } else
@@ -294,7 +302,7 @@ void PlaylistEditor::CreateSongActionButton() {
     posX += 10.0f + 1.25f;
     this->moveUpButton = new IconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-            if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_UP)) {
+            if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_UP)) {
                 Toast::GetInstance()->ShowMessage("Move up song");
                 this->RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_UP);
             }
@@ -305,7 +313,8 @@ void PlaylistEditor::CreateSongActionButton() {
     posX += 10.0f + 1.25f;
     this->moveDownButton = new IconButton("MoveDownFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-            if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_DOWN)) {
+
+            if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_DOWN)) {
                 Toast::GetInstance()->ShowMessage("Move down song");
                 this->RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_DOWN);
             }
@@ -342,11 +351,14 @@ void PlaylistEditor::CreateSongActionButton() {
                 std::string selectedPackName = annotatedBeatmapLevelCollections[i]->get_collectionName();
                 if (CustomLevelName == selectedPackName)
                     continue;
-                this->listModalItem.push_back(QuestUI::BeatSaberUI::CreateClickableText(this->listContainer->get_transform(), selectedPackName, false, [this, selectedPackName] () {
+                this->listModalItem.push_back(QuestUI::BeatSaberUI::CreateClickableText(
+                                              this->listContainer->get_transform(), selectedPackName, false, [this, i, selectedPackName] () {
                     std::string selectedPackId = CustomLevelPackPrefixID + selectedPackName;
                     this->listModal->get_gameObject()->set_active(false);
                     this->insertButton->SetInteractable(true);
-                    if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackID()), FILE_ACTION::ITEM_INSERT, GetPlaylistPath(selectedPackId))) {
+                    if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(),
+                                   GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_INSERT,
+                                   GetPlaylistPath(i, selectedPackId))) {
                         Toast::GetInstance()->ShowMessage("Insert song to selected list");
                         this->RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
                     }
@@ -396,6 +408,7 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
 
 void PlaylistEditor::RefreshAndStayList(const SCROLL_ACTION act)
 {
+    const auto lastCollectionIdx = this->GetSelectedPackIdx();
     const auto lastCollectionName = this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection() ?
                                     this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_collectionName() : "";
     const auto lastScrollPos = this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->dyn__destinationPos();
@@ -425,14 +438,14 @@ void PlaylistEditor::RefreshAndStayList(const SCROLL_ACTION act)
     }
 
     RuntimeSongLoader::API::RefreshSongs(true,
-    [this, lastScrollPos, nextScrollPos, nextSelectedRow, lastCollectionName, act] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
+    [this, lastScrollPos, nextScrollPos, nextSelectedRow, lastCollectionIdx, lastCollectionName, act] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
         INFO("Success refresh song");
         if (NO_STAY == act)
             return;
         if ("" != lastCollectionName) {
             // select level collection
             auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
-            for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++)
+            for (int i = lastCollectionIdx; i < annotatedBeatmapLevelCollections.Length(); i++) // index may move back when new list created
                 if (annotatedBeatmapLevelCollections[i]->get_collectionName()->Equals(lastCollectionName)) {
                     this->AnnotatedBeatmapLevelCollectionsViewController->SetData(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections(), i, false);
                     break;

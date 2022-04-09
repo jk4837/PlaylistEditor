@@ -41,6 +41,7 @@ private:
     GlobalNamespace::CustomPreviewBeatmapLevel *GetSelectedCustomPreviewBeatmapLevel();
     int GetSelectedCustomLevelIdx();
     const std::string GetSelectedPackID();
+    int GetSelectedPackIdx();
 
     void AcquiredObject();
     void RegistEvent();

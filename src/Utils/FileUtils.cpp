@@ -113,36 +113,48 @@ bool FindAllSongIdx(const rapidjson::Document &document,
     return false;
 }
 
-static std::map<StringW, std::string> playlists;
-std::string GetPlaylistPath(const StringW &listID, const bool fullRefresh) {
-    if (CustomLevelID == listID)
+static std::vector<std::tuple<StringW, std::string>> playlists;
+void ReloadPlaylistPath() {
+    playlists.clear();
+    if(!std::filesystem::is_directory(CustomLevelPackPath)) {
+        INFO("Don't have playlist dir %s", CustomLevelPackPath.c_str());
+        return;
+    }
+    for (const auto &entry : std::filesystem::directory_iterator(CustomLevelPackPath)) {
+        if(entry.is_directory())
+            continue;
+        rapidjson::Document document;
+        auto path = entry.path().string();
+        if (!LoadFile(path, document))
+            continue;
+        const std::string playlistTitle = document.GetObject()["playlistTitle"].GetString();
+        const std::string playlistID = CustomLevelPackPrefixID + playlistTitle;
+        playlists.push_back(make_tuple(playlistID, path));
+        // INFO("LoadPlaylists #%d %s : %s", playlists.size()+1, playlistID.c_str(), path.c_str());
+    }
+}
+
+std::string GetPlaylistPath(const int listIdx, const StringW &listID, const bool canRefresh) {
+    if (0 == listIdx || CustomLevelID == listID)
         return "";
-    if (fullRefresh)
-        playlists.clear();
-    if (!playlists.contains(listID)) {
+    for (int i = listIdx - 1; i < playlists.size(); i++) { // listIdx contain "Custom Level"
+        if (listID != std::get<0>(playlists[i]))
+            continue;
+        return std::get<1>(playlists[i]);
+    }
+    // find again upper if not found
+    for (int i = std::min(listIdx, static_cast<int>(playlists.size())-1); i >= 0; i--) {
+        if (listID != std::get<0>(playlists[i]))
+            continue;
+        return std::get<1>(playlists[i]);
+    }
+    if (canRefresh) {
         INFO("Don't have playlist %s, reload all", std::string(listID).c_str());
-        playlists.clear();
-        if(!std::filesystem::is_directory(CustomLevelPackPath)) {
-            INFO("Don't have playlist dir %s", CustomLevelPackPath.c_str());
-            return "";
-        }
-        for (const auto &entry : std::filesystem::directory_iterator(CustomLevelPackPath)) {
-            if(!entry.is_directory()) {
-                rapidjson::Document document;
-                auto path = entry.path().string();
-                if (!LoadFile(path, document))
-                    continue;
-                const std::string playlistTitle = document.GetObject()["playlistTitle"].GetString();
-                playlists[CustomLevelPackPrefixID + playlistTitle] = path;
-                INFO("LoadPlaylists %s : %s", playlistTitle.c_str(), path.c_str());
-            }
-        }
+        ReloadPlaylistPath();
+        return GetPlaylistPath(listIdx, listID, false);
     }
-    if (std::string(listID).empty() || !playlists.contains(listID)) {
-        INFO("Failed to find playlist of %s", std::string(listID).c_str());
-        return "";
-    }
-    return playlists[listID];
+    INFO("Failed to find playlist of %s", std::string(listID).c_str());
+    return "";
 }
 
 bool CreateFile(const std::string &name) {
@@ -224,10 +236,8 @@ bool UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPreviewBeatma
             case ITEM_REMOVE_ALL:
                 if (path.empty()) {
                     bool has_remove = false;
-                    if (playlists.empty())
-                        GetPlaylistPath();
                     for (auto it : playlists)
-                        has_remove |= UpdateFile(selectedLevelIdx, selectedLevel, it.second, ITEM_REMOVE_ALL);
+                        has_remove |= UpdateFile(selectedLevelIdx, selectedLevel, std::get<1>(it), ITEM_REMOVE_ALL);
                     if (!has_remove)
                         return false;
                 } else {
