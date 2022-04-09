@@ -156,7 +156,7 @@ bool CreateFile(const std::string &name) {
         document.AddMember("playlistDescription", "Created by " ID, allocator);
         document.AddMember("songs", rapidjson::Value(rapidjson::kArrayType), allocator);             // require
         document.AddMember("image", rapidjson::Value(), allocator);
-        if (!WriteFile(CustomLevelPackPath + name, document))
+        if (!WriteFile(CustomLevelPackPath + name + "_BMBF.json", document)) // postfix will avoid BMBF clone list
             throw std::invalid_argument("failed to write file");
         return true;
     } catch (const std::exception &e) {
