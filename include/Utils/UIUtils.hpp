@@ -25,11 +25,6 @@ HMUI::InputFieldView *CreateStringInput(UnityEngine::Transform *parent, const St
                                         const std::function<void(StringW)> &onEnter);
 
 template <class T>
-constexpr ArrayW<T> listToArrayW(::System::Collections::Generic::IReadOnlyList_1<T> *list) {
-    return ArrayW<T>(reinterpret_cast<Array<T>*>(list));
-}
-
-template <class T>
 void listAllName(UnityEngine::Transform *parent, const std::string &prefix = "") {
     INFO("%s #p: tag: %s, name: %s, id: %u", prefix.c_str(), std::string(parent->get_tag()).c_str(), std::string(parent->get_name()).c_str(), parent->GetInstanceID());
     auto childs = parent->GetComponentsInChildren<T *>();

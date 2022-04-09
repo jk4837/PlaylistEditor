@@ -13,6 +13,11 @@ const std::string CustomLevelPrefixID = "custom_level_";
 const std::string CustomLevelID = "custom_levelPack_CustomLevels";
 const std::string CustomLevelName = "Custom Levels";
 
+template <class T>
+constexpr ArrayW<T> listToArrayW(::System::Collections::Generic::IReadOnlyList_1<T> *list) {
+    return ArrayW<T>(reinterpret_cast<Array<T>*>(list));
+}
+
 template <class T, typename Method>
 T MakeDelegate(Method fun)
 {
