@@ -290,7 +290,6 @@ void PlaylistEditor::CreateSongActionButton() {
             );
         }, FileToSprite("DeleteAndRemoveIcon"), "Delete and Remove Song from List");
     this->deleteAndRemoveButton->SetActive(false);
-    // deleteAndRemoveButton->get_transform()->SetAsLastSibling();
 
     posX += 15.0f + 1.25f ;
     this->removeButton = new IconButton("RemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
@@ -302,7 +301,6 @@ void PlaylistEditor::CreateSongActionButton() {
                 Toast::GetInstance()->ShowMessage("Song isn't in any list");
         }, FileToSprite("RemoveIcon"), "Remove Song from List");
     this->removeButton->SetActive(false);
-    // this->removeButton->get_transform()->SetAsLastSibling();
 
     posX += 10.0f + 1.25f;
     this->moveUpButton = new IconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
@@ -314,7 +312,6 @@ void PlaylistEditor::CreateSongActionButton() {
                 Toast::GetInstance()->ShowMessage("Already on top");
         }, FileToSprite("MoveUpIcon"), "Move Up Song from List");
     this->moveUpButton->SetActive(false);
-    // this->moveUpButton->get_transform()->SetAsLastSibling();
 
     posX += 10.0f + 1.25f;
     this->moveDownButton = new IconButton("MoveDownFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
@@ -327,7 +324,6 @@ void PlaylistEditor::CreateSongActionButton() {
                 Toast::GetInstance()->ShowMessage("Already on bottom");
         }, FileToSprite("MoveDownIcon"), "Move Down Song from List");
     this->moveDownButton->SetActive(false);
-    // this->moveDownButton->get_transform()->SetAsLastSibling();
 
     posX += 10.0f + 1.25f;
     this->insertButton = new IconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
@@ -374,7 +370,6 @@ void PlaylistEditor::CreateSongActionButton() {
             this->listModal->get_gameObject()->set_active(true);
         }, FileToSprite("InsertIcon"), "Insert to List");
     this->insertButton->SetActive(false);
-    // this->insertButton->get_transform()->SetAsLastSibling();
 }
 
 void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casue don't know how to decide if now at main menu
