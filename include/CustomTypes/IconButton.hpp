@@ -21,6 +21,7 @@ public:
     void ResetUI();
     void SetInteractable(const bool interactable);
     void SetActive(const bool active);
+    void ChangeHoverHint(const std::string &hint);
 
 protected:
     IconButton() = default;

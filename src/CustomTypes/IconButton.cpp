@@ -3,6 +3,7 @@
 #include "Utils/UIUtils.hpp"
 
 #include "UnityEngine/GameObject.hpp"
+#include "HMUI/HoverHint.hpp"
 
 namespace PlaylistEditor
 {
@@ -34,6 +35,11 @@ void IconButton::SetInteractable(const bool interactable)
 void IconButton::SetActive(const bool active)
 {
     btn_->get_gameObject()->set_active(active);
+}
+
+void IconButton::ChangeHoverHint(const std::string &hint)
+{
+    this->btn_->get_gameObject()->GetComponentsInChildren<HMUI::HoverHint *>().First()->set_text(hint);
 }
 
 }

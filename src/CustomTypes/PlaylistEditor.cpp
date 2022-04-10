@@ -384,10 +384,14 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
     // if (deleteButton) {  // manage by songloader
     //     deleteButton->SetActive(true);
     // }
-    if (this->deleteAndRemoveButton)
+    if (this->deleteAndRemoveButton) {
         this->deleteAndRemoveButton->SetActive(!forceDisable && atCustomLevel);
-    if (this->removeButton)
+        this->deleteAndRemoveButton->ChangeHoverHint(atCustomPack ? "Delete and Remove Song from This List" : "Delete and Remove Song from All List");
+    }
+    if (this->removeButton) {
         this->removeButton->SetActive(!forceDisable && atCustomLevel);
+        this->removeButton->ChangeHoverHint(atCustomPack ? "Remove Song from This List" : "Remove Song from All List");
+    }
     if (this->insertButton)
         this->insertButton->SetActive(!forceDisable && atCustomLevel);
 
