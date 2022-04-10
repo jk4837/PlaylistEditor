@@ -310,7 +310,8 @@ void PlaylistEditor::CreateSongActionButton() {
             if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_UP)) {
                 Toast::GetInstance()->ShowMessage("Move up song");
                 this->RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_UP);
-            }
+            } else
+                Toast::GetInstance()->ShowMessage("Already on top");
         }, FileToSprite("MoveUpIcon"), "Move Up Song from List");
     this->moveUpButton->SetActive(false);
     // this->moveUpButton->get_transform()->SetAsLastSibling();
@@ -322,7 +323,8 @@ void PlaylistEditor::CreateSongActionButton() {
             if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_DOWN)) {
                 Toast::GetInstance()->ShowMessage("Move down song");
                 this->RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_DOWN);
-            }
+            } else
+                Toast::GetInstance()->ShowMessage("Already on bottom");
         }, FileToSprite("MoveDownIcon"), "Move Down Song from List");
     this->moveDownButton->SetActive(false);
     // this->moveDownButton->get_transform()->SetAsLastSibling();
