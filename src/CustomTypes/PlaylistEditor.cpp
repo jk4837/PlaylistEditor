@@ -54,6 +54,7 @@ void PlaylistEditor::Init(HMUI::FlowCoordinator *flowCoordinator)
     this->AcquiredObject();
     this->RegistEvent();
     ReloadPlaylistPath();
+    this->init = true;
 }
 
 void PlaylistEditor::AcquiredObject()
@@ -187,6 +188,8 @@ int PlaylistEditor::GetSelectedPackIdx()
 
 void PlaylistEditor::CreateListActionButton()
 {
+    if (!this->init)
+        return;
     if (!this->createListButton)
         this->createListButton = new IconButton("CreateListButton", this->LevelFilteringNavigationController->get_transform(), "PracticeButton",
                                                 UnityEngine::Vector2(69.0f, -3.0f), UnityEngine::Vector2(10.0f, 7.0f), [this] () {
@@ -253,7 +256,9 @@ void PlaylistEditor::ResetUI()
 }
 
 void PlaylistEditor::CreateSongActionButton() {
-    if (deleteButton)
+    if (!this->init)
+        return;
+    if (this->deleteButton)
         return;
     auto parent = this->StandardLevelDetailView->get_practiceButton()->get_transform()->get_parent();
     auto deleteButtonTransform = parent->FindChild("DeleteLevelButton");
@@ -372,6 +377,8 @@ void PlaylistEditor::CreateSongActionButton() {
 
 void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casue don't know how to decide if now at main menu
 {
+    if (!this->init)
+        return;
     bool atCustomCategory = this->IsSelectedCustomCategory();
     bool atCustomPack = this->IsSelectedCustomPack();
     bool atCustomLevel = this->IsSelectedCustomLevel();

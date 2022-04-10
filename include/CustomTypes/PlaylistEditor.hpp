@@ -48,6 +48,8 @@ private:
     void ResetUI();
     void RefreshAndStayList(const SCROLL_ACTION act);
 
+    bool init = false;
+
     HMUI::FlowCoordinator *FlowCoordinator = nullptr;
     GlobalNamespace::AnnotatedBeatmapLevelCollectionsViewController *AnnotatedBeatmapLevelCollectionsViewController = nullptr;
     GlobalNamespace::LevelCollectionNavigationController *LevelCollectionNavigationController = nullptr;
