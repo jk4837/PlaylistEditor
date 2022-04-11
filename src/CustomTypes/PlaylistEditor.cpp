@@ -4,6 +4,7 @@
 #include "GlobalNamespace/IAnnotatedBeatmapLevelCollection.hpp"
 #include "GlobalNamespace/IBeatmapLevelCollection.hpp"
 #include "GlobalNamespace/LevelCollectionViewController.hpp"
+#include "GlobalNamespace/LevelFilterParams.hpp"
 #include "GlobalNamespace/LevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelSelectionNavigationController.hpp"
 #include "GlobalNamespace/PartyFreePlayFlowCoordinator.hpp"
@@ -63,6 +64,9 @@ void PlaylistEditor::AcquiredObject()
     // gather flow coordinator elements
     auto LevelSelectionNavigationController = LevelSelectionFlowCoordinator->dyn_levelSelectionNavigationController();
     INFO("Acquired LevelSelectionNavigationController [%d]", LevelSelectionNavigationController->GetInstanceID());
+
+    this->LevelSearchViewController = LevelSelectionFlowCoordinator->dyn__levelSearchViewController();
+    INFO("Acquired LevelSearchViewController [%d]", this->LevelSearchViewController->GetInstanceID());
 
     this->LevelFilteringNavigationController = LevelSelectionNavigationController->dyn__levelFilteringNavigationController();
     INFO("Acquired LevelFilteringNavigationController [%d]", this->LevelFilteringNavigationController->GetInstanceID());
@@ -144,6 +148,14 @@ bool PlaylistEditor::IsSelectedCustomCategory()
     return this->IsSelectedSoloOrPartyPlay() &&
            this->LevelFilteringNavigationController &&
            (GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::CustomSongs == this->LevelFilteringNavigationController->get_selectedLevelCategory());
+}
+
+bool PlaylistEditor::IsSelectedFavoriteOrAllCategory()
+{
+    return this->IsSelectedSoloOrPartyPlay() &&
+           this->LevelFilteringNavigationController &&
+           (GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::Favorites == this->LevelFilteringNavigationController->get_selectedLevelCategory() ||
+            GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::All == this->LevelFilteringNavigationController->get_selectedLevelCategory());
 }
 
 bool PlaylistEditor::IsSelectedCustomPack()
@@ -419,6 +431,8 @@ void PlaylistEditor::RefreshAndStayList(const SCROLL_ACTION act)
     const auto lastCollectionIdx = this->GetSelectedPackIdx();
     const auto lastCollectionName = this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection() ?
                                     this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_collectionName() : "";
+    auto lastLevelFilterParams = this->LevelSearchViewController->dyn__currentFilterParams();
+    const auto lastFilterParamsText = this->LevelSearchViewController->dyn__searchTextInputFieldView()->get_text();
     const auto lastScrollPos = this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->dyn__destinationPos();
     auto nextScrollPos = lastScrollPos;
     const int selectedRow = this->LevelCollectionTableView->dyn__selectedRow();
@@ -446,8 +460,12 @@ void PlaylistEditor::RefreshAndStayList(const SCROLL_ACTION act)
     }
 
     RuntimeSongLoader::API::RefreshSongs(true,
-    [this, lastScrollPos, nextScrollPos, nextSelectedRow, lastCollectionIdx, lastCollectionName, act] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
+    [=] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
         INFO("Success refresh song");
+        if (this->IsSelectedFavoriteOrAllCategory()) {
+            this->LevelSearchViewController->UpdateSearchLevelFilterParams(lastLevelFilterParams); // will change view to favorite or all category
+            this->LevelSearchViewController->dyn__searchTextInputFieldView()->set_text(lastFilterParamsText);
+        }
         if (NO_STAY == act)
             return;
         if ("" != lastCollectionName) {

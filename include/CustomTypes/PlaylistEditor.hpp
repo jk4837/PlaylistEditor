@@ -7,6 +7,7 @@
 #include "GlobalNamespace/LevelCollectionNavigationController.hpp"
 #include "GlobalNamespace/LevelCollectionTableView.hpp"
 #include "GlobalNamespace/LevelFilteringNavigationController.hpp"
+#include "GlobalNamespace/LevelSearchViewController.hpp"
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
 #include "HMUI/FlowCoordinator.hpp"
 #include "HMUI/ModalView.hpp"
@@ -36,6 +37,7 @@ private:
 
     bool IsSelectedSoloOrPartyPlay();
     bool IsSelectedCustomCategory();
+    bool IsSelectedFavoriteOrAllCategory();
     bool IsSelectedCustomPack();
     bool IsSelectedCustomLevel();
     GlobalNamespace::CustomPreviewBeatmapLevel *GetSelectedCustomPreviewBeatmapLevel();
@@ -55,6 +57,7 @@ private:
     GlobalNamespace::LevelCollectionNavigationController *LevelCollectionNavigationController = nullptr;
     GlobalNamespace::LevelCollectionTableView *LevelCollectionTableView = nullptr;
     GlobalNamespace::LevelFilteringNavigationController *LevelFilteringNavigationController = nullptr;
+    GlobalNamespace::LevelSearchViewController *LevelSearchViewController = nullptr;
     GlobalNamespace::SelectLevelCategoryViewController *LevelCategoryViewController = nullptr;
     GlobalNamespace::StandardLevelDetailView *StandardLevelDetailView = nullptr;
 
