@@ -10,6 +10,7 @@
 #include "main.hpp"
 #include "CustomTypes/PlaylistEditor.hpp"
 #include "CustomTypes/Logging.hpp"
+#include "Utils/FileUtils.hpp"
 
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
 static PlaylistEditor::PlaylistEditor *playlistEditor = nullptr;
@@ -64,6 +65,7 @@ extern "C" void setup(ModInfo &info) {
     modInfo = info;
 
     getConfig().Load(); // Load the config file
+    PlaylistEditor::Utils::ShrinkPlaylistPath();
     INFO("Completed setup!");
 }
 

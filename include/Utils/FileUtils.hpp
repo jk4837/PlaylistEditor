@@ -11,6 +11,7 @@ typedef enum FILE_ACTION {
     ITEM_INSERT, ITEM_REMOVE, ITEM_REMOVE_ALL, ITEM_MOVE_UP, ITEM_MOVE_DOWN
 } FILE_ACTION_T;
 
+bool ShrinkPlaylistPath();
 bool WriteFile(const std::string &path, rapidjson::Document &document);
 bool LoadFile(const std::string &path, rapidjson::Document &document);
 bool FindSongIdx(const rapidjson::Document &document, const int selectedLevelIdx, const std::string &selectedLevelID, int &idx);

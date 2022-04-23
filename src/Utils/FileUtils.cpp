@@ -14,6 +14,8 @@
 namespace PlaylistEditor::Utils
 {
 
+const std::string BMBFPlaylistPostfix = "_BMBF.json";
+
 static std::string rapidjsonToString(rapidjson::Document &document) {
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -113,6 +115,42 @@ bool FindAllSongIdx(const rapidjson::Document &document,
     return false;
 }
 
+namespace {
+bool EndsWith(const std::string &path, const std::string &postfix) {
+    return (path.length() >= postfix.length()) &&
+           (postfix == path.substr(path.length() - postfix.length()));
+}
+// shrink untill single postfix
+std::string ShrinkBMBFPath(const std::string &path) {
+    if (!EndsWith(path, BMBFPlaylistPostfix))
+        return path + BMBFPlaylistPostfix;
+    return ShrinkBMBFPath(path.substr(0, path.length() - 10));
+}
+
+}
+
+bool ShrinkPlaylistPath() { // for multiple _BMBF.json
+    bool hasShrink = false;
+    if(!std::filesystem::is_directory(CustomLevelPackPath)) {
+        INFO("Don't have playlist dir %s", CustomLevelPackPath.c_str());
+        return false;
+    }
+    for (const auto &entry : std::filesystem::directory_iterator(CustomLevelPackPath)) {
+        if(entry.is_directory())
+            continue;
+
+        const auto path = entry.path().string();
+        const auto BMBFPath = ShrinkBMBFPath(path);
+
+        if (path == BMBFPath)
+            continue;
+        std::filesystem::rename(path, BMBFPath);
+        hasShrink = true;
+        INFO("Shrink playlist from %s to %s", path.c_str(), BMBFPath.c_str());
+    }
+    return hasShrink;
+}
+
 static std::vector<std::tuple<StringW, std::string>> playlists;
 void ReloadPlaylistPath() {
     playlists.clear();
@@ -168,7 +206,7 @@ bool CreateFile(const std::string &name) {
         document.AddMember("playlistDescription", "Created by " ID, allocator);
         document.AddMember("songs", rapidjson::Value(rapidjson::kArrayType), allocator);             // require
         document.AddMember("image", rapidjson::Value(), allocator);
-        if (!WriteFile(CustomLevelPackPath + name + "_BMBF.json", document)) // postfix will avoid BMBF clone list
+        if (!WriteFile(CustomLevelPackPath + name + BMBFPlaylistPostfix, document)) // postfix will avoid BMBF clone list
             throw std::invalid_argument("failed to write file");
         return true;
     } catch (const std::exception &e) {
