@@ -18,6 +18,11 @@ constexpr ArrayW<T> listToArrayW(::System::Collections::Generic::IReadOnlyList_1
     return ArrayW<T>(reinterpret_cast<Array<T>*>(list));
 }
 
+template <class T>
+int getCount(::System::Collections::Generic::IReadOnlyList_1<T> *list) {
+    return reinterpret_cast<System::Collections::Generic::IReadOnlyCollection_1<T>*>(list)->get_Count();
+}
+
 template <class T, typename Method>
 T MakeDelegate(Method fun)
 {

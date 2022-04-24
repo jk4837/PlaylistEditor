@@ -74,13 +74,6 @@ extern "C" void load() {
     il2cpp_functions::Init();
     playlistEditor = PlaylistEditor::PlaylistEditor::GetInstance();
 
-    RuntimeSongLoader::API::AddRefreshLevelPacksEvent(
-        [] (RuntimeSongLoader::SongLoaderBeatmapLevelPackCollectionSO *customBeatmapLevelPackCollectionSO) {
-            INFO("Reload All Playlists");
-            PlaylistManager::LoadPlaylists(customBeatmapLevelPackCollectionSO, true);
-        }
-    );
-
     INFO("Installing hooks...");
     INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), MainFlowCoordinator_DidActivate);
     INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), StandardLevelDetailViewController_ShowContent);

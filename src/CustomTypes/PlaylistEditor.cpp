@@ -1,10 +1,14 @@
 #include "CustomTypes/PlaylistEditor.hpp"
 
+#include "GlobalNamespace/AnnotatedBeatmapLevelCollectionsGridView.hpp"
+#include "GlobalNamespace/BeatmapLevelPack.hpp"
+#include "GlobalNamespace/CustomBeatmapLevelCollection.hpp"
+#include "GlobalNamespace/CustomBeatmapLevelPack.hpp"
 #include "GlobalNamespace/CustomPreviewBeatmapLevel.hpp"
+#include "GlobalNamespace/GridView.hpp"
 #include "GlobalNamespace/IAnnotatedBeatmapLevelCollection.hpp"
 #include "GlobalNamespace/IBeatmapLevelCollection.hpp"
 #include "GlobalNamespace/LevelCollectionViewController.hpp"
-#include "GlobalNamespace/LevelFilterParams.hpp"
 #include "GlobalNamespace/LevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelSelectionNavigationController.hpp"
 #include "GlobalNamespace/PartyFreePlayFlowCoordinator.hpp"
@@ -150,14 +154,6 @@ bool PlaylistEditor::IsSelectedCustomCategory()
            (GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::CustomSongs == this->LevelFilteringNavigationController->get_selectedLevelCategory());
 }
 
-bool PlaylistEditor::IsSelectedFavoriteOrAllCategory()
-{
-    return this->IsSelectedSoloOrPartyPlay() &&
-           this->LevelFilteringNavigationController &&
-           (GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::Favorites == this->LevelFilteringNavigationController->get_selectedLevelCategory() ||
-            GlobalNamespace::SelectLevelCategoryViewController::LevelCategory::All == this->LevelFilteringNavigationController->get_selectedLevelCategory());
-}
-
 bool PlaylistEditor::IsSelectedCustomPack()
 {
     return this->IsSelectedCustomCategory() &&
@@ -223,7 +219,7 @@ void PlaylistEditor::CreateListActionButton()
                                             }
                                             if (CreateFile(value)) {
                                                 ReloadPlaylistPath();
-                                                this->RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
+                                                this->RefreshAndStayList(REFESH_TYPE::PACK_INSERT);
                                                 Toast::GetInstance()->ShowMessage("Create new list");
                                                 this->createListInput->SetText("");
                                             }
@@ -241,7 +237,7 @@ void PlaylistEditor::CreateListActionButton()
                                     if (DeleteFile(GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()))) {
                                         ReloadPlaylistPath();
                                         Toast::GetInstance()->ShowMessage("Delete selected list");
-                                        this->RefreshAndStayList(SCROLL_ACTION::NO_STAY);
+                                        this->RefreshAndStayList(REFESH_TYPE::PACK_DELETE);
                                     }
         }, FileToSprite("DeleteIcon"), "Delete List");
 }
@@ -267,6 +263,160 @@ void PlaylistEditor::ResetUI()
     }
 }
 
+void PlaylistEditor::MoveUpSelectedSongInPack() {
+    auto levels = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection()->get_beatmapLevels());
+    auto levelIdx = this->GetSelectedCustomLevelIdx();
+    std::swap(levels[levelIdx], levels[levelIdx-1]);
+}
+
+void PlaylistEditor::MoveDownSelectedSongInPack() {
+    auto levels = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection()->get_beatmapLevels());
+    auto levelIdx = this->GetSelectedCustomLevelIdx();
+    std::swap(levels[levelIdx], levels[levelIdx+1]);
+}
+
+void PlaylistEditor::RemoveSelectedSongInPack() {
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> levels(this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection()->get_beatmapLevels());
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevels(levels.Length() - 1);
+    INFO("RemoveSelectedSongInPack %s, %lu => %lu", std::string(this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_collectionName()).c_str(), levels.Length(), newLevels.Length());
+    auto levelIdx = this->GetSelectedCustomLevelIdx();
+
+    std::copy(levels.begin(), std::next(levels.begin(), levelIdx), newLevels.begin());
+    std::copy(std::next(levels.begin(), levelIdx + 1), levels.end(), std::next(newLevels.begin(), levelIdx));
+
+    ((GlobalNamespace::CustomBeatmapLevelCollection*) this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection())->dyn__customPreviewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::CustomPreviewBeatmapLevel*>*) newLevels.convert();
+    this->RemoveSelectedSongInTable();
+}
+
+void PlaylistEditor::RemoveSongsInPack(GlobalNamespace::IBeatmapLevelCollection *beatmapLevelCollection, const StringW &levelID) {
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> levels(beatmapLevelCollection->get_beatmapLevels());
+    std::vector<size_t> levelIdxs;
+
+    for (size_t i = 0; i < levels.Length(); i++)
+    {
+        if (levelID != levels[i]->get_levelID())
+            continue;
+        levelIdxs.push_back(i);
+    }
+
+    if (levelIdxs.empty())
+        return;
+
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevels(levels.Length() - levelIdxs.size());
+    INFO("RemoveSongsInPack %lu => %lu", levels.Length(), newLevels.Length());
+
+    std::copy(levels.begin(), std::next(levels.begin(), levelIdxs[0]), newLevels.begin());
+    for (size_t i = 0; i < levelIdxs.size(); i++)
+    {
+        const auto start = std::next(levels.begin(), levelIdxs[i] + 1);
+        const auto end = (i + 1 < levelIdxs.size()) ? std::next(levels.begin(), levelIdxs[i+1]) : levels.end();
+        std::copy(start, end, std::next(newLevels.begin(), levelIdxs[i] - i));
+    }
+
+    ((GlobalNamespace::CustomBeatmapLevelCollection*) beatmapLevelCollection)->dyn__customPreviewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::CustomPreviewBeatmapLevel*>*) newLevels.convert();
+}
+
+void PlaylistEditor::RemoveSelectedSongInTable() {
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> levels(this->LevelCollectionTableView->dyn__previewBeatmapLevels());
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevels(levels.Length() - 1);
+    INFO("RemoveSelectedSongInTable %lu => %lu", levels.Length(), newLevels.Length());
+    auto levelIdx = this->GetSelectedCustomLevelIdx();
+
+    std::copy(levels.begin(), std::next(levels.begin(), levelIdx), newLevels.begin());
+    std::copy(std::next(levels.begin(), levelIdx + 1), levels.end(), std::next(newLevels.begin(), levelIdx));
+
+    this->LevelCollectionTableView->dyn__previewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::IPreviewBeatmapLevel*>*) newLevels.convert();
+}
+
+void PlaylistEditor::InsertSelectedSongToTable() {
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> levels(this->LevelCollectionTableView->dyn__previewBeatmapLevels());
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevels(levels.Length() + 1);
+    INFO("InsertSelectedSongToTable %lu => %lu", levels.Length(), newLevels.Length());
+    auto levelIdx = this->GetSelectedCustomLevelIdx();
+
+    std::copy(levels.begin(), levels.end(), newLevels.begin());
+    newLevels[newLevels.Length() - 1] = levels[levelIdx];
+
+    this->LevelCollectionTableView->dyn__previewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::IPreviewBeatmapLevel*>*) newLevels.convert();
+}
+
+void PlaylistEditor::RemoveSongsInFilterList(const StringW &levelID) {
+    auto packs = this->LevelSearchViewController->dyn__beatmapLevelPacks();
+    if (packs.Length() <= 0) {
+        ERROR("No packs");
+        return;
+    }
+
+    // use readonly list first to get correct length, but second time will crash, need to use array type
+    auto levelsRO = (reinterpret_cast<::GlobalNamespace::IAnnotatedBeatmapLevelCollection*>(packs[0]))
+            ->get_beatmapLevelCollection()->get_beatmapLevels();
+    auto levels = listToArrayW((reinterpret_cast<::GlobalNamespace::IAnnotatedBeatmapLevelCollection*>(packs[0]))
+            ->get_beatmapLevelCollection()->get_beatmapLevels());
+
+    bool useArray = levels.Length() < 50000;
+    auto levelsLen = useArray ? levels.Length() : getCount(levelsRO);
+
+    int levelIdx = -1;
+    for (size_t i = 0; i < levelsLen; i++)
+        if ((useArray && levelID == levels[i]->get_levelID()) ||
+            (!useArray && levelID == levelsRO->get_Item(i)->get_levelID())) {
+            levelIdx = i;
+            break;
+        }
+    if (0 > levelIdx)
+        return;
+
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevels(levelsLen - 1);
+    INFO("RemoveSongsInFilterList %lu => %lu", levelsLen, newLevels.Length());
+    if (useArray) {
+        std::copy(levels.begin(), std::next(levels.begin(), levelIdx), newLevels.begin());
+        std::copy(std::next(levels.begin(), levelIdx + 1), levels.end(), std::next(newLevels.begin(), levelIdx));
+    } else {
+        for (size_t i = 0, j = 0; i < levelsLen; i++) {
+            if (levelIdx == i)
+                continue;
+            newLevels[j++] = levelsRO->get_Item(i);
+        }
+    }
+
+    ((GlobalNamespace::CustomBeatmapLevelCollection*) (reinterpret_cast<::GlobalNamespace::IAnnotatedBeatmapLevelCollection*>(packs[0]))
+                ->get_beatmapLevelCollection())->dyn__customPreviewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::CustomPreviewBeatmapLevel*>*) newLevels.convert(); // update filter param 就有用
+}
+
+void PlaylistEditor::RemoveSelectedSongInAllPack(const bool includeCustomLevel) {
+    bool isSelectedCustomLevel = this->IsSelectedCustomCategory() && (0 == this->GetSelectedPackIdx());
+    auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+
+    for (int i = includeCustomLevel ? 0 : 1; i < annotatedBeatmapLevelCollections.Length(); i++)
+        this->RemoveSongsInPack(annotatedBeatmapLevelCollections[i]->get_beatmapLevelCollection(), this->GetSelectedCustomPreviewBeatmapLevel()->get_levelID());
+
+    this->RemoveSongsInFilterList(this->GetSelectedCustomPreviewBeatmapLevel()->get_levelID());
+
+    if (this->IsSelectedCustomPack() || includeCustomLevel) {
+        this->RemoveSelectedSongInTable();
+    }
+}
+
+void PlaylistEditor::InsertSelectedSongToPack(const int collectionIdx) {
+    auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+    auto beatmapLevelCollection = annotatedBeatmapLevelCollections[collectionIdx]->get_beatmapLevelCollection();
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> levels(beatmapLevelCollection->get_beatmapLevels());
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevels(levels.Length() + 1);
+
+    std::copy(levels.begin(), levels.end(), newLevels.begin());
+    newLevels[newLevels.Length() - 1] = (GlobalNamespace::IPreviewBeatmapLevel*)this->GetSelectedCustomPreviewBeatmapLevel();
+
+    ((GlobalNamespace::CustomBeatmapLevelCollection*) beatmapLevelCollection)->dyn__customPreviewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::CustomPreviewBeatmapLevel*>*) newLevels.convert();
+
+    // process cover image if not default image
+    if (annotatedBeatmapLevelCollections[0]->get_coverImage() != annotatedBeatmapLevelCollections[collectionIdx]->get_coverImage())
+        return;
+    auto image = this->GetSelectedCustomPreviewBeatmapLevel()->dyn__coverImage();
+    reinterpret_cast<::GlobalNamespace::CustomBeatmapLevelPack*>(annotatedBeatmapLevelCollections[collectionIdx])->dyn_$smallCoverImage$k__BackingField() = image;
+    reinterpret_cast<::GlobalNamespace::CustomBeatmapLevelPack*>(annotatedBeatmapLevelCollections[collectionIdx])->dyn_$coverImage$k__BackingField() = image;
+    this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollectionsGridView()->dyn__gridView()->ReloadData();
+}
+
 void PlaylistEditor::CreateSongActionButton() {
     if (!this->init)
         return;
@@ -283,7 +433,8 @@ void PlaylistEditor::CreateSongActionButton() {
         GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(this->LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
         RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [this] {
             Toast::GetInstance()->ShowMessage("Delete song");
-            this->RefreshAndStayList(this->IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
+            this->RemoveSelectedSongInAllPack(true);
+            this->RefreshAndStayList(REFESH_TYPE::SONG_STAY);
         });
     });
 
@@ -293,11 +444,12 @@ void PlaylistEditor::CreateSongActionButton() {
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(20.0f,7.0f), [this] () {
             GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
             RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [this] {
-                    if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_REMOVE))
+                    if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_REMOVE)) {
                         Toast::GetInstance()->ShowMessage(this->IsSelectedCustomPack() ? "Delete song and remove from the list" : "Delete song and remove from all list" );
-                    else
+                        this->RemoveSelectedSongInAllPack(true);
+                    } else
                         Toast::GetInstance()->ShowMessage("Delete song");
-                    this->RefreshAndStayList(this->IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
+                    this->RefreshAndStayList(REFESH_TYPE::SONG_STAY);
                 }
             );
         }, FileToSprite("DeleteAndRemoveIcon"), "Delete and Remove Song from List");
@@ -308,7 +460,11 @@ void PlaylistEditor::CreateSongActionButton() {
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
             if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_REMOVE)) {
                 Toast::GetInstance()->ShowMessage(this->IsSelectedCustomPack() ? "Remove song from the list" : "Remove song from all list");
-                this->RefreshAndStayList(this->IsSelectedCustomPack() ? SCROLL_ACTION::SCROLL_REMOVE_STAY : SCROLL_ACTION::SCROLL_STAY);
+                if (this->IsSelectedCustomPack()) {
+                    this->RemoveSelectedSongInPack();
+                    this->RefreshAndStayList(REFESH_TYPE::SONG_STAY);
+                } else
+                    this->RemoveSelectedSongInAllPack(false);
             } else
                 Toast::GetInstance()->ShowMessage("Song isn't in any list");
         }, FileToSprite("RemoveIcon"), "Remove Song from List");
@@ -319,7 +475,8 @@ void PlaylistEditor::CreateSongActionButton() {
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
             if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_UP)) {
                 Toast::GetInstance()->ShowMessage("Move up song");
-                this->RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_UP);
+                this->MoveUpSelectedSongInPack();
+                this->RefreshAndStayList(REFESH_TYPE::SONG_MOVE_UP);
             } else
                 Toast::GetInstance()->ShowMessage("Already on top");
         }, FileToSprite("MoveUpIcon"), "Move Up Song from List");
@@ -331,7 +488,8 @@ void PlaylistEditor::CreateSongActionButton() {
 
             if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(), GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_MOVE_DOWN)) {
                 Toast::GetInstance()->ShowMessage("Move down song");
-                this->RefreshAndStayList(SCROLL_ACTION::SCROLL_MOVE_DOWN);
+                this->MoveDownSelectedSongInPack();
+                this->RefreshAndStayList(REFESH_TYPE::SONG_MOVE_DOWN);
             } else
                 Toast::GetInstance()->ShowMessage("Already on bottom");
         }, FileToSprite("MoveDownIcon"), "Move Down Song from List");
@@ -426,65 +584,54 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
     }
 }
 
-void PlaylistEditor::RefreshAndStayList(const SCROLL_ACTION act)
+void PlaylistEditor::RefreshAndStayList(const REFESH_TYPE act)
 {
-    const auto lastCollectionIdx = this->GetSelectedPackIdx();
-    const auto lastCollectionName = this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection() ?
-                                    this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_collectionName() : "";
-    auto lastLevelFilterParams = this->LevelSearchViewController->dyn__currentFilterParams();
-    const auto lastFilterParamsText = this->LevelSearchViewController->dyn__searchTextInputFieldView()->get_text();
     const auto lastScrollPos = this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->dyn__destinationPos();
     auto nextScrollPos = lastScrollPos;
     const int selectedRow = this->LevelCollectionTableView->dyn__selectedRow();
-    int nextSelectedRow;
-    const float rowHeight = this->LevelCollectionTableView->CellSize();
-    switch (act) {
-        case SCROLL_MOVE_DOWN:
-            nextSelectedRow = selectedRow + 1;
-            if (nextSelectedRow*rowHeight > (lastScrollPos + 6*rowHeight))
-                nextScrollPos = lastScrollPos + rowHeight;
-            break;
-        case SCROLL_MOVE_UP:
-            nextSelectedRow = selectedRow - 1;
-            if (nextSelectedRow*rowHeight < lastScrollPos)
-                nextScrollPos = lastScrollPos - rowHeight;
-            break;
-        case SCROLL_STAY:
-            nextSelectedRow = selectedRow;
-            break;
-        case SCROLL_REMOVE_STAY:
-            nextSelectedRow = (selectedRow < this->LevelCollectionTableView->NumberOfCells() - 1) ? selectedRow : this->LevelCollectionTableView->NumberOfCells() - 2;
-            break;
-        default:
-            break;
-    }
+    auto nextSelectedRow = selectedRow;
 
-    RuntimeSongLoader::API::RefreshSongs(true,
-    [=] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
-        INFO("Success refresh song");
-        if (this->IsSelectedFavoriteOrAllCategory()) {
-            this->LevelSearchViewController->UpdateSearchLevelFilterParams(lastLevelFilterParams); // will change view to favorite or all category
-            this->LevelSearchViewController->dyn__searchTextInputFieldView()->set_text(lastFilterParamsText);
-        }
-        if (NO_STAY == act)
-            return;
+    if (PACK_INSERT == act || PACK_DELETE == act) {
+        const auto lastCollectionIdx = this->GetSelectedPackIdx();
+        const auto lastCollectionName = this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection() ?
+                                        this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_collectionName() : "";
+        RuntimeSongLoader::API::RefreshPacks(true);
         if ("" != lastCollectionName) {
+            INFO("select collection %d %s", lastCollectionIdx, std::string(lastCollectionName).c_str());
             // select level collection
             auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
             for (int i = lastCollectionIdx; i < annotatedBeatmapLevelCollections.Length(); i++) // index may move back when new list created
+            {
                 if (annotatedBeatmapLevelCollections[i]->get_collectionName()->Equals(lastCollectionName)) {
                     this->AnnotatedBeatmapLevelCollectionsViewController->SetData(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections(), i, false);
                     break;
                 }
+            }
         }
+    } else { // song action
+        const float rowHeight = this->LevelCollectionTableView->CellSize();
 
-        // select level
-        // this->LevelCollectionTableView->SelectLevel(nextPreviewBeatmapLevels); // this will jump to center
-        this->LevelCollectionTableView->dyn__tableView()->SelectCellWithIdx(nextSelectedRow, true); // select but scroll at head
-        this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(lastScrollPos, false);
-        if (nextScrollPos != lastScrollPos)
-            this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(nextScrollPos, true);
-    });
+        this->LevelCollectionTableView->dyn__tableView()->ReloadData();
+        if (SONG_MOVE_DOWN == act) {
+            nextSelectedRow = selectedRow + 1;
+            if (nextSelectedRow*rowHeight > (lastScrollPos + 6*rowHeight))
+                nextScrollPos = lastScrollPos + rowHeight;
+        } else if (SONG_MOVE_UP == act) {
+            nextSelectedRow = selectedRow - 1;
+            if (nextSelectedRow*rowHeight < lastScrollPos)
+                nextScrollPos = lastScrollPos - rowHeight;
+        } else if (SONG_STAY == act) {
+            if (selectedRow >= this->LevelCollectionTableView->NumberOfCells())
+                nextSelectedRow = this->LevelCollectionTableView->NumberOfCells() - 1;
+        }
+    }
+
+    INFO("select level %d %f %f", nextSelectedRow, lastScrollPos, nextScrollPos);
+    // this->LevelCollectionTableView->SelectLevel(nextPreviewBeatmapLevels); // this will jump to center
+    this->LevelCollectionTableView->dyn__tableView()->SelectCellWithIdx(nextSelectedRow, true); // select but scroll at head
+    this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(lastScrollPos, false);
+    if (nextScrollPos != lastScrollPos)
+        this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(nextScrollPos, true);
 }
 
 }

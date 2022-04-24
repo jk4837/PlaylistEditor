@@ -31,13 +31,12 @@ public:
     void AdjustUI(const bool forceDisable = false);   // use forceDisable, cause don't know how to decide if now at main menu
 
 private:
-    typedef enum SCROLL_ACTION {
-        NO_STAY, SCROLL_STAY, SCROLL_REMOVE_STAY, SCROLL_MOVE_UP, SCROLL_MOVE_DOWN
-    } MOVE_ACTION_T;
+    typedef enum REFESH_TYPE {
+        SONG_STAY, SONG_MOVE_UP, SONG_MOVE_DOWN, PACK_INSERT, PACK_DELETE
+    } REFESH_TYPE_T;
 
     bool IsSelectedSoloOrPartyPlay();
     bool IsSelectedCustomCategory();
-    bool IsSelectedFavoriteOrAllCategory();
     bool IsSelectedCustomPack();
     bool IsSelectedCustomLevel();
     GlobalNamespace::CustomPreviewBeatmapLevel *GetSelectedCustomPreviewBeatmapLevel();
@@ -45,10 +44,20 @@ private:
     const std::string GetSelectedPackID();
     int GetSelectedPackIdx();
 
+    void MoveUpSelectedSongInPack();
+    void MoveDownSelectedSongInPack();
+    void InsertSelectedSongToPack(int collectionIdx);
+    void RemoveSelectedSongInPack();
+    void RemoveSongsInPack(GlobalNamespace::IBeatmapLevelCollection *beatmapLevelCollection, const StringW &levelID);
+    void RemoveSelectedSongInAllPack(const bool includeCustomLevel);
+    void RemoveSongsInFilterList(const StringW &levelID);
+
     void AcquiredObject();
     void RegistEvent();
     void ResetUI();
-    void RefreshAndStayList(const SCROLL_ACTION act);
+    void RemoveSelectedSongInTable();
+    void InsertSelectedSongToTable();
+    void RefreshAndStayList(const REFESH_TYPE act);
 
     bool init = false;
 
