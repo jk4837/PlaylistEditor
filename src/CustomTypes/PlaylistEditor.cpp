@@ -22,8 +22,6 @@
 #include "System/Action.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Transform.hpp"
-#include "questui/shared/BeatSaberUI.hpp"
-#include "questui/shared/CustomTypes/Components/ClickableText.hpp"
 #include "songloader/shared/API.hpp"
 
 #include "CustomTypes/Toast.hpp"
@@ -253,7 +251,7 @@ void PlaylistEditor::ResetUI()
     if (this->moveDownButton)
         this->moveDownButton->ResetUI();
     if (this->listModal)
-        this->listModal->get_gameObject()->set_active(false);
+        this->listModal->SetActive(false);
     if (this->moveDownButton)
         this->moveDownButton->ResetUI();
     if (this->createListInput)
@@ -498,46 +496,46 @@ void PlaylistEditor::CreateSongActionButton() {
     posX += 10.0f + 1.25f;
     this->insertButton = new IconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
-            if (this->listModal && this->listModal->get_gameObject()->get_active()) {
-                this->listModal->get_gameObject()->set_active(false);
-                // not knowning how to refresh container, so destroy and recreate every time
-                for (auto item : listModalItem) {
-                    UnityEngine::Object::Destroy(item);
-                }
-                this->listModalItem.clear();
-                UnityEngine::Object::Destroy(this->listModal);
-                UnityEngine::Object::Destroy(this->listContainer);
-                this->listModal = nullptr;
+            if (this->listModal && this->listModal->GetActive()) {
+                this->listModal->SetActive(false);
                 return;
             }
 
-            auto screenContainer = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [](auto x) {
-                return x->get_name()->Equals("ScreenContainer");
-            });
-            this->listModal = QuestUI::BeatSaberUI::CreateModal(screenContainer->get_transform(),
-                UnityEngine::Vector2(30.0f, 25.0f), UnityEngine::Vector2(posX + 84.0f, -25.0f), nullptr);
-            this->listContainer = QuestUI::BeatSaberUI::CreateScrollableModalContainer(this->listModal);
-            this->listModal->get_transform()->set_localScale({0.75, 0.75, 1});
+            if (!this->listModal) {
+                auto screenContainer = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([](auto x) {
+                    return x->get_name()->Equals("ScreenContainer");
+                });
+                this->listModal = new ListModal(screenContainer->get_transform(), UnityEngine::Vector2(30.0f, 25.0f), UnityEngine::Vector2(posX + 84.0f, -25.0f),
+                                                [this] (const int i, const std::string &selectedPackName) {
+                    const auto selectedPackIdx = i + 1;
+                    const std::string selectedPackId = CustomLevelPackPrefixID + selectedPackName;
+                    this->listModal->SetActive(false);
+                    this->insertButton->SetInteractable(true);
+                    this->lastInsertPackIdx = selectedPackIdx;
+                    this->lastInsertPackName = selectedPackName;
+                    if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(),
+                                    GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_INSERT,
+                                    GetPlaylistPath(selectedPackIdx, selectedPackId))) {
+                        this->InsertSelectedSongToPack(selectedPackIdx);
+                        if (selectedPackIdx == this->GetSelectedPackIdx()) {
+                            this->InsertSelectedSongToTable();
+                            this->RefreshAndStayList(REFESH_TYPE::SONG_STAY);
+                        }
+                        Toast::GetInstance()->ShowMessage("Insert song to selected list");
+                    }
+                });
+            }
 
+            std::vector<std::string> listItem;
             auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
             for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
                 std::string selectedPackName = annotatedBeatmapLevelCollections[i]->get_collectionName();
                 if (CustomLevelName == selectedPackName)
                     continue;
-                this->listModalItem.push_back(QuestUI::BeatSaberUI::CreateClickableText(
-                                              this->listContainer->get_transform(), selectedPackName, false, [this, i, selectedPackName] () {
-                    std::string selectedPackId = CustomLevelPackPrefixID + selectedPackName;
-                    this->listModal->get_gameObject()->set_active(false);
-                    this->insertButton->SetInteractable(true);
-                    if (UpdateFile(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel(),
-                                   GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), FILE_ACTION::ITEM_INSERT,
-                                   GetPlaylistPath(i, selectedPackId))) {
-                        Toast::GetInstance()->ShowMessage("Insert song to selected list");
-                        this->RefreshAndStayList(SCROLL_ACTION::SCROLL_STAY);
-                    }
-                }));
+                listItem.push_back(selectedPackName);
             }
-            this->listModal->get_gameObject()->set_active(true);
+            this->listModal->SetListItem(listItem);
+            this->listModal->SetActive(true);
         }, FileToSprite("InsertIcon"), "Insert to List");
     this->insertButton->SetActive(false);
 }

@@ -15,6 +15,7 @@
 #include "questui/shared/CustomTypes/Components/ClickableText.hpp"
 
 #include "CustomTypes/DoubleClickIconButton.hpp"
+#include "CustomTypes/ListModal.hpp"
 
 namespace PlaylistEditor
 {
@@ -78,10 +79,8 @@ private:
     IconButton *moveDownButton = nullptr;
     IconButton *moveUpButton = nullptr;
     IconButton *removeButton = nullptr;
-    UnityEngine::GameObject *listContainer = nullptr;
     HMUI::InputFieldView *createListInput = nullptr;
-    HMUI::ModalView *listModal = nullptr;
-    std::vector<QuestUI::ClickableText *> listModalItem;
+    ListModal *listModal;
 };
 
 }
