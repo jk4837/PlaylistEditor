@@ -81,6 +81,9 @@ private:
     IconButton *removeButton = nullptr;
     HMUI::InputFieldView *createListInput = nullptr;
     ListModal *listModal;
+
+    int lastInsertPackIdx = -1;
+    std::string lastInsertPackName = "";
 };
 
 }

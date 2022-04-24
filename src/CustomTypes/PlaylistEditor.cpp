@@ -220,6 +220,8 @@ void PlaylistEditor::CreateListActionButton()
                                                 this->RefreshAndStayList(REFESH_TYPE::PACK_INSERT);
                                                 Toast::GetInstance()->ShowMessage("Create new list");
                                                 this->createListInput->SetText("");
+                                                this->lastInsertPackIdx = 0;
+                                                this->lastInsertPackName = std::string(value);
                                             }
                                             this->createListInput->get_gameObject()->set_active(false);
                 });
@@ -526,6 +528,7 @@ void PlaylistEditor::CreateSongActionButton() {
                 });
             }
 
+            int initSelectIdx = 0;
             std::vector<std::string> listItem;
             auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
             for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
@@ -533,8 +536,10 @@ void PlaylistEditor::CreateSongActionButton() {
                 if (CustomLevelName == selectedPackName)
                     continue;
                 listItem.push_back(selectedPackName);
+                if (i >= this->lastInsertPackIdx && this->lastInsertPackName == selectedPackName)
+                    initSelectIdx = i;
             }
-            this->listModal->SetListItem(listItem);
+            this->listModal->SetListItem(listItem, initSelectIdx - 1);
             this->listModal->SetActive(true);
         }, FileToSprite("InsertIcon"), "Insert to List");
     this->insertButton->SetActive(false);
