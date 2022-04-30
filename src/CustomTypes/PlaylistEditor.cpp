@@ -280,16 +280,38 @@ void PlaylistEditor::ResetUI()
     }
 }
 
-void PlaylistEditor::MoveUpSelectedSongInPack() {
-    auto levels = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection()->get_beatmapLevels());
+void PlaylistEditor::MoveUpSelectedSong() {
+    auto levelsInPack = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection()->get_beatmapLevels());
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevelsInPack(levelsInPack.Length());
     auto levelIdx = this->GetSelectedCustomLevelIdx();
-    std::swap(levels[levelIdx], levels[levelIdx-1]);
+
+    std::copy(levelsInPack.begin(), levelsInPack.end(), newLevelsInPack.begin());
+    std::swap(newLevelsInPack[levelIdx], newLevelsInPack[levelIdx-1]);
+    ((GlobalNamespace::CustomBeatmapLevelCollection*) this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection())->dyn__customPreviewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::CustomPreviewBeatmapLevel*>*) newLevelsInPack.convert();
+
+    auto levelsInTable = listToArrayW(this->LevelCollectionTableView->dyn__previewBeatmapLevels());
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevelsInTable(levelsInTable.Length());
+
+    std::copy(levelsInTable.begin(), levelsInTable.end(), newLevelsInTable.begin());
+    std::swap(newLevelsInTable[levelIdx], newLevelsInTable[levelIdx-1]);
+    this->LevelCollectionTableView->dyn__previewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::IPreviewBeatmapLevel*>*) newLevelsInTable.convert();
 }
 
-void PlaylistEditor::MoveDownSelectedSongInPack() {
-    auto levels = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection()->get_beatmapLevels());
+void PlaylistEditor::MoveDownSelectedSong() {
+    auto levelsInPack = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection()->get_beatmapLevels());
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevelsInPack(levelsInPack.Length());
     auto levelIdx = this->GetSelectedCustomLevelIdx();
-    std::swap(levels[levelIdx], levels[levelIdx+1]);
+
+    std::copy(levelsInPack.begin(), levelsInPack.end(), newLevelsInPack.begin());
+    std::swap(newLevelsInPack[levelIdx], newLevelsInPack[levelIdx+1]);
+    ((GlobalNamespace::CustomBeatmapLevelCollection*) this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection())->dyn__customPreviewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::CustomPreviewBeatmapLevel*>*) newLevelsInPack.convert();
+
+    auto levelsInTable = listToArrayW(this->LevelCollectionTableView->dyn__previewBeatmapLevels());
+    ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevelsInTable(levelsInTable.Length());
+
+    std::copy(levelsInTable.begin(), levelsInTable.end(), newLevelsInTable.begin());
+    std::swap(newLevelsInTable[levelIdx], newLevelsInTable[levelIdx+1]);
+    this->LevelCollectionTableView->dyn__previewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::IPreviewBeatmapLevel*>*) newLevelsInTable.convert();
 }
 
 void PlaylistEditor::RemoveSelectedSongInPack() {
@@ -492,7 +514,7 @@ void PlaylistEditor::CreateSongActionButton() {
                                             UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
             if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_MOVE_UP)) {
                 Toast::GetInstance()->ShowMessage("Move up song");
-                this->MoveUpSelectedSongInPack();
+                this->MoveUpSelectedSong();
                 this->RefreshAndStayList(REFESH_TYPE::SONG_MOVE_UP);
             } else
                 Toast::GetInstance()->ShowMessage("Already on top");
@@ -505,7 +527,7 @@ void PlaylistEditor::CreateSongActionButton() {
 
             if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_MOVE_DOWN)) {
                 Toast::GetInstance()->ShowMessage("Move down song");
-                this->MoveDownSelectedSongInPack();
+                this->MoveDownSelectedSong();
                 this->RefreshAndStayList(REFESH_TYPE::SONG_MOVE_DOWN);
             } else
                 Toast::GetInstance()->ShowMessage("Already on bottom");

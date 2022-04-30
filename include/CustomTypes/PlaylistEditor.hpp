@@ -49,8 +49,8 @@ private:
     bool UpdateFileWithSelected(const FILE_ACTION act);
     bool UpdateFileWithSelected(const FILE_ACTION act, const int selectedPackIdx, const std::string &selectedPackId);
 
-    void MoveUpSelectedSongInPack();
-    void MoveDownSelectedSongInPack();
+    void MoveUpSelectedSong();
+    void MoveDownSelectedSong();
     void InsertSelectedSongToPack(int collectionIdx);
     void RemoveSelectedSongInPack();
     void RemoveSongsInPack(GlobalNamespace::IBeatmapLevelCollection *beatmapLevelCollection, const StringW &levelID);
