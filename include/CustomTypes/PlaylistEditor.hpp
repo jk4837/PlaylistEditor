@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Utils/FileUtils.hpp"
 #include "Utils/UIUtils.hpp"
 
 #include "GlobalNamespace/AnnotatedBeatmapLevelCollectionsViewController.hpp"
@@ -45,6 +46,9 @@ private:
     const std::string GetSelectedPackID();
     int GetSelectedPackIdx();
 
+    bool UpdateFileWithSelected(const FILE_ACTION act);
+    bool UpdateFileWithSelected(const FILE_ACTION act, const int selectedPackIdx, const std::string &selectedPackId);
+
     void MoveUpSelectedSongInPack();
     void MoveDownSelectedSongInPack();
     void InsertSelectedSongToPack(int collectionIdx);
@@ -84,6 +88,7 @@ private:
 
     int lastInsertPackIdx = -1;
     std::string lastInsertPackName = "";
+    FileUtils fileUtils;
 };
 
 }

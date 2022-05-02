@@ -11,7 +11,7 @@
 #include "CustomTypes/Logging.hpp"
 #include "Utils/Utils.hpp"
 
-namespace PlaylistEditor::Utils
+namespace PlaylistEditor
 {
 
 const std::string BMBFPlaylistPostfix = "_BMBF.json";
@@ -23,7 +23,7 @@ static std::string rapidjsonToString(rapidjson::Document &document) {
     return std::string(buffer.GetString());
 }
 
-bool WriteFile(const std::string &path, rapidjson::Document &document) {
+bool FileUtils::WriteFile(const std::string &path, rapidjson::Document &document) {
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
 
@@ -35,7 +35,7 @@ bool WriteFile(const std::string &path, rapidjson::Document &document) {
     return true;
 }
 
-bool LoadFile(const std::string &path, rapidjson::Document &document) {
+bool FileUtils::LoadFile(const std::string &path, rapidjson::Document &document) {
     bool success = false;
     try {
         if(!fileexists(path))
@@ -58,9 +58,9 @@ bool LoadFile(const std::string &path, rapidjson::Document &document) {
     return success;
 }
 
-bool FindSongIdx(const rapidjson::Document &document,
+bool FileUtils::FindSongIdx(const rapidjson::Document &document,
                  const int selectedLevelIdx, const std::string &selectedLevelID, int &idx) {
-    const auto selectedHash = selectedLevelID.substr(CustomLevelPrefixID.length());
+    const auto selectedHash = selectedLevelID.substr(Utils::CustomLevelPrefixID.length());
     try {
         const auto &songs = document.GetObject()["songs"].GetArray();
         // selectedLevelIdx may greater then real index in list, cause list can contain not found song
@@ -92,10 +92,10 @@ bool FindSongIdx(const rapidjson::Document &document,
     return false;
 }
 
-bool FindAllSongIdx(const rapidjson::Document &document,
+bool FileUtils::FindAllSongIdx(const rapidjson::Document &document,
                     const std::string &selectedLevelID, std::vector<int> &idxs) {
     try {
-        const auto selectedHash = selectedLevelID.substr(CustomLevelPrefixID.length());
+        const auto selectedHash = selectedLevelID.substr(Utils::CustomLevelPrefixID.length());
         const auto &songs = document.GetObject()["songs"].GetArray();
 
         for (rapidjson::SizeType i = 0; i < songs.Size(); i++) {
@@ -129,13 +129,13 @@ std::string ShrinkBMBFPath(const std::string &path) {
 
 }
 
-bool ShrinkPlaylistPath() { // for multiple _BMBF.json
+bool FileUtils::ShrinkPlaylistPath() { // for multiple _BMBF.json
     bool hasShrink = false;
-    if(!std::filesystem::is_directory(CustomLevelPackPath)) {
-        INFO("Don't have playlist dir %s", CustomLevelPackPath.c_str());
+    if(!std::filesystem::is_directory(Utils::CustomLevelPackPath)) {
+        INFO("Don't have playlist dir %s", Utils::CustomLevelPackPath.c_str());
         return false;
     }
-    for (const auto &entry : std::filesystem::directory_iterator(CustomLevelPackPath)) {
+    for (const auto &entry : std::filesystem::directory_iterator(Utils::CustomLevelPackPath)) {
         if(entry.is_directory())
             continue;
 
@@ -151,14 +151,13 @@ bool ShrinkPlaylistPath() { // for multiple _BMBF.json
     return hasShrink;
 }
 
-static std::vector<std::tuple<StringW, std::string>> playlists;
-void ReloadPlaylistPath() {
+void FileUtils::ReloadPlaylistPath() {
     playlists.clear();
-    if(!std::filesystem::is_directory(CustomLevelPackPath)) {
-        INFO("Don't have playlist dir %s", CustomLevelPackPath.c_str());
+    if(!std::filesystem::is_directory(Utils::CustomLevelPackPath)) {
+        INFO("Don't have playlist dir %s", Utils::CustomLevelPackPath.c_str());
         return;
     }
-    for (const auto &entry : std::filesystem::directory_iterator(CustomLevelPackPath)) {
+    for (const auto &entry : std::filesystem::directory_iterator(Utils::CustomLevelPackPath)) {
         if(entry.is_directory())
             continue;
         rapidjson::Document document;
@@ -166,14 +165,14 @@ void ReloadPlaylistPath() {
         if (!LoadFile(path, document))
             continue;
         const std::string playlistTitle = document.GetObject()["playlistTitle"].GetString();
-        const std::string playlistID = CustomLevelPackPrefixID + playlistTitle;
+        const std::string playlistID = Utils::CustomLevelPackPrefixID + playlistTitle;
         playlists.push_back(make_tuple(playlistID, path));
         // INFO("LoadPlaylists #%d %s : %s", playlists.size()+1, playlistID.c_str(), path.c_str());
     }
 }
 
-std::string GetPlaylistPath(const int listIdx, const std::string &listID, const bool canRefresh) {
-    if (0 == listIdx || CustomLevelID == listID)
+std::string FileUtils::GetPlaylistPath(const int listIdx, const std::string &listID, const bool canRefresh) {
+    if (0 == listIdx || Utils::CustomLevelID == listID)
         return "";
     for (int i = listIdx - 1; i < playlists.size(); i++) { // listIdx contain "Custom Level"
         if (listID != std::get<0>(playlists[i]))
@@ -195,7 +194,7 @@ std::string GetPlaylistPath(const int listIdx, const std::string &listID, const 
     return "";
 }
 
-bool CreateFile(const std::string &name) {
+bool FileUtils::CreateFile(const std::string &name) {
     try {
         rapidjson::Document document;
         rapidjson::Document::AllocatorType &allocator = document.GetAllocator();
@@ -206,7 +205,7 @@ bool CreateFile(const std::string &name) {
         document.AddMember("playlistDescription", "Created by " ID, allocator);
         document.AddMember("songs", rapidjson::Value(rapidjson::kArrayType), allocator);             // require
         document.AddMember("image", rapidjson::Value(), allocator);
-        if (!WriteFile(CustomLevelPackPath + name + BMBFPlaylistPostfix, document)) // postfix will avoid BMBF clone list
+        if (!WriteFile(Utils::CustomLevelPackPath + name + BMBFPlaylistPostfix, document)) // postfix will avoid BMBF clone list
             throw std::invalid_argument("failed to write file");
         return true;
     } catch (const std::exception &e) {
@@ -216,7 +215,7 @@ bool CreateFile(const std::string &name) {
     return false;
 }
 
-bool DeleteFile(const std::string &path) {
+bool FileUtils::DeleteFile(const std::string &path) {
     if(!fileexists(path))
         return true;
     return deletefile(path);
@@ -228,7 +227,7 @@ static std::string GetCoverImageBase64String(GlobalNamespace::CustomPreviewBeatm
     return "data:image/png;base64," + System::Convert::ToBase64String(byteArray);
 }
 
-bool UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const std::string &path,
+bool FileUtils::UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const std::string &path,
                 const FILE_ACTION act, const std::string &insertPath) {
     try {
         if (!selectedLevel)
@@ -254,7 +253,7 @@ bool UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPreviewBeatma
                     insertSong.SetObject();
                     insertSong.AddMember("songName", std::string(selectedLevel->get_songName()), allocator2);
                     insertSong.AddMember("levelAuthorName", std::string(selectedLevel->get_levelAuthorName()), allocator2);
-                    insertSong.AddMember("hash", selectedLevelID.substr(CustomLevelPrefixID.length()), allocator2);
+                    insertSong.AddMember("hash", selectedLevelID.substr(Utils::CustomLevelPrefixID.length()), allocator2);
                     insertSong.AddMember("levelid", selectedLevelID, allocator2);
                     insertSong.AddMember("uploader", std::string(selectedLevel->get_levelAuthorName()), allocator2);
                 }
