@@ -66,6 +66,7 @@ extern "C" void setup(ModInfo &info) {
 
     getConfig().Load(); // Load the config file
     PlaylistEditor::FileUtils::ShrinkPlaylistPath();
+    PlaylistEditor::FileUtils::AppendPlaylistData();
     INFO("Completed setup!");
 }
 

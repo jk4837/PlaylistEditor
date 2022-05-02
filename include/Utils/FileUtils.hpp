@@ -15,6 +15,7 @@ class FileUtils
 {
 public:
     static bool ShrinkPlaylistPath();
+    static bool AppendPlaylistData();
     void ReloadPlaylistPath();
     std::string GetPlaylistPath(const int listIdx, const std::string &listID, const bool canRefresh = true);
     bool CreateFile(const std::string &name);
@@ -22,8 +23,10 @@ public:
     bool UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const std::string &path, const FILE_ACTION act, const std::string &insertPath = "");
 
 private:
-    bool WriteFile(const std::string &path, rapidjson::Document &document);
-    bool LoadFile(const std::string &path, rapidjson::Document &document);
+    static bool WriteFile(const std::string &path, rapidjson::Document &document);
+    static bool LoadFile(const std::string &path, rapidjson::Document &document);
+    static bool AppendData(rapidjson::Document &document, const rapidjson::Document &bkpDocument);
+    static void BackupFile(const std::string &path);
     bool FindSongIdx(const rapidjson::Document &document, const int selectedLevelIdx, const std::string &selectedLevelID, int &idx);
     bool FindAllSongIdx(const rapidjson::Document &document, const std::string &selectedLevelID, std::vector<int> &idxs);
 

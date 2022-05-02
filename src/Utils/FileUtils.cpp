@@ -23,6 +23,15 @@ static std::string rapidjsonToString(rapidjson::Document &document) {
     return std::string(buffer.GetString());
 }
 
+std::string GetBackupFilePath(const std::string &path) {
+    const auto filename = std::filesystem::path(path).filename().string();
+    return Utils::ModPackPath + filename;
+}
+
+void FileUtils::BackupFile(const std::string &path) {
+    std::filesystem::copy_file(path, GetBackupFilePath(path), std::filesystem::copy_options::overwrite_existing);
+}
+
 bool FileUtils::WriteFile(const std::string &path, rapidjson::Document &document) {
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -32,6 +41,7 @@ bool FileUtils::WriteFile(const std::string &path, rapidjson::Document &document
         ERROR("Failed to write file %s", path.data());
         return false;
     }
+    BackupFile(path);
     return true;
 }
 
@@ -151,6 +161,73 @@ bool FileUtils::ShrinkPlaylistPath() { // for multiple _BMBF.json
     return hasShrink;
 }
 
+// TODO: handle error cond
+// TODO: better append logic
+bool FileUtils::AppendData(rapidjson::Document &document, const rapidjson::Document &bkpDocument) {
+    rapidjson::Document::AllocatorType &allocator = document.GetAllocator();
+    const auto &songs = document.GetObject()["songs"].GetArray();
+    const auto &bkpSongs = bkpDocument.GetObject()["songs"].GetArray();
+
+    if (songs.Size() != bkpSongs.Size()) {
+        INFO("AppendData with diff size, songs %u <> bkpSongs %u", songs.Size(), bkpSongs.Size());
+    }
+    for (rapidjson::SizeType i = 0, j = 0; i < songs.Size() && j < bkpSongs.Size(); i++) {
+        if (0 != strcasecmp(songs[i]["hash"].GetString(), bkpSongs[j]["hash"].GetString())) {
+            if (songs.Size() < bkpSongs.Size()) { // guess user had deleted some songs by BMBF
+                INFO("Skip backup hash %s", bkpSongs[j]["hash"].GetString());
+                i--;
+                j++;
+            } else if (songs.Size() > bkpSongs.Size()) { // guess user had added some songs by BMBF
+                INFO("Skip hash %s", songs[i]["hash"].GetString());
+            } else { // guess user had added and delete some songs or just change order by BMBF
+                INFO("Todo loop to j end to find match song %s", songs[i]["hash"].GetString());
+            }
+            continue;
+        }
+        songs[i].CopyFrom(bkpSongs[j++], allocator);
+    }
+    return true;
+}
+
+bool FileUtils::AppendPlaylistData() { // for appending extra data that may delete by BMBF
+    bool hasAppend = false;
+    if(!std::filesystem::is_directory(Utils::CustomLevelPackPath)) {
+        INFO("Don't have playlist dir %s", Utils::CustomLevelPackPath.c_str());
+        return false;
+    }
+
+    if(!std::filesystem::is_directory(Utils::ModPackPath))
+        std::filesystem::create_directory(Utils::ModPackPath);
+
+    for (const auto &entry : std::filesystem::directory_iterator(Utils::CustomLevelPackPath)) {
+        if(entry.is_directory())
+            continue;
+
+        rapidjson::Document document;
+        rapidjson::Document::AllocatorType &allocator = document.GetAllocator();
+        const auto path = entry.path().string();
+        const auto filename = entry.path().filename().string();
+        const auto bkpPath = Utils::ModPackPath + filename;
+
+        if (!LoadFile(path, document))
+            continue;
+
+        if (!document.GetObject().HasMember("appendPlaylistEditorData")) {
+            hasAppend = true;
+            document.AddMember("appendPlaylistEditorData", true, allocator);
+            if (std::filesystem::is_regular_file(bkpPath)) {
+                rapidjson::Document bkpDocument;
+                if (LoadFile(bkpPath, bkpDocument)) {
+                    AppendData(document, bkpDocument);
+                }
+            }
+            WriteFile(path, document); // will backup in function
+            INFO("Append extra data for playlist %s", path.c_str());
+        }
+    }
+    return hasAppend;
+}
+
 void FileUtils::ReloadPlaylistPath() {
     playlists.clear();
     if(!std::filesystem::is_directory(Utils::CustomLevelPackPath)) {
@@ -205,6 +282,7 @@ bool FileUtils::CreateFile(const std::string &name) {
         document.AddMember("playlistDescription", "Created by " ID, allocator);
         document.AddMember("songs", rapidjson::Value(rapidjson::kArrayType), allocator);             // require
         document.AddMember("image", rapidjson::Value(), allocator);
+        document.AddMember("appendPlaylistEditorData", true, allocator);
         if (!WriteFile(Utils::CustomLevelPackPath + name + BMBFPlaylistPostfix, document)) // postfix will avoid BMBF clone list
             throw std::invalid_argument("failed to write file");
         return true;
@@ -218,7 +296,10 @@ bool FileUtils::CreateFile(const std::string &name) {
 bool FileUtils::DeleteFile(const std::string &path) {
     if(!fileexists(path))
         return true;
-    return deletefile(path);
+    if (!deletefile(path))
+        return false;
+    deletefile(GetBackupFilePath(path));
+    return true;
 }
 
 static std::string GetCoverImageBase64String(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel)
