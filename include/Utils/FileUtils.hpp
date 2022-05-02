@@ -17,7 +17,7 @@ bool LoadFile(const std::string &path, rapidjson::Document &document);
 bool FindSongIdx(const rapidjson::Document &document, const int selectedLevelIdx, const std::string &selectedLevelID, int &idx);
 bool FindAllSongIdx(const rapidjson::Document &document, const std::string &selectedLevelID, std::vector<int> &idxs);
 void ReloadPlaylistPath();
-std::string GetPlaylistPath(const int listIdx, const StringW &listID, const bool canRefresh = true);
+std::string GetPlaylistPath(const int listIdx, const std::string &listID, const bool canRefresh = true);
 bool CreateFile(const std::string &name);
 bool DeleteFile(const std::string &path);
 bool UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const std::string &path, const FILE_ACTION act, const std::string &insertPath = "");

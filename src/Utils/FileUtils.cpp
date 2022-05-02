@@ -172,7 +172,7 @@ void ReloadPlaylistPath() {
     }
 }
 
-std::string GetPlaylistPath(const int listIdx, const StringW &listID, const bool canRefresh) {
+std::string GetPlaylistPath(const int listIdx, const std::string &listID, const bool canRefresh) {
     if (0 == listIdx || CustomLevelID == listID)
         return "";
     for (int i = listIdx - 1; i < playlists.size(); i++) { // listIdx contain "Custom Level"
@@ -187,11 +187,11 @@ std::string GetPlaylistPath(const int listIdx, const StringW &listID, const bool
         return std::get<1>(playlists[i]);
     }
     if (canRefresh) {
-        INFO("Don't have playlist %s, reload all", std::string(listID).c_str());
+        INFO("Don't have playlist %s, reload all", listID.c_str());
         ReloadPlaylistPath();
         return GetPlaylistPath(listIdx, listID, false);
     }
-    INFO("Failed to find playlist of %s", std::string(listID).c_str());
+    INFO("Failed to find playlist of %s", listID.c_str());
     return "";
 }
 
