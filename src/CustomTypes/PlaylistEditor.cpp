@@ -161,7 +161,7 @@ bool PlaylistEditor::IsSelectedCustomPack()
 
 bool PlaylistEditor::IsSelectedCustomLevel()
 {
-    return this->LevelCollectionTableView &&
+    return this->GetSelectedCustomLevelIdx() >= 0 &&
            this->LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel() &&
            il2cpp_functions::class_is_assignable_from(classof(GlobalNamespace::CustomPreviewBeatmapLevel*),
                                                       il2cpp_functions::object_get_class(reinterpret_cast<Il2CppObject*>(this->LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel())));
@@ -176,7 +176,7 @@ GlobalNamespace::CustomPreviewBeatmapLevel *PlaylistEditor::GetSelectedCustomPre
 int PlaylistEditor::GetSelectedCustomLevelIdx() // will regards pack header row
 {
     if (!this->LevelCollectionTableView)
-        return 0;
+        return -1;
     return this->LevelCollectionTableView->dyn__selectedRow() -
            (this->LevelCollectionTableView->dyn__showLevelPackHeader() ? 1 : 0);
 }
