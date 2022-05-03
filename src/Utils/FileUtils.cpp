@@ -309,7 +309,7 @@ static std::string GetCoverImageBase64String(GlobalNamespace::CustomPreviewBeatm
 }
 
 bool FileUtils::UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const std::string &path,
-                const FILE_ACTION act, const std::string &insertPath) {
+                const FILE_ACTION act, const std::string &insertPath, const std::string &charStr, const int diff) {
     try {
         if (!selectedLevel)
             throw std::invalid_argument("null selected level");
@@ -339,6 +339,14 @@ bool FileUtils::UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPr
                     insertSong.AddMember("uploader", std::string(selectedLevel->get_levelAuthorName()), allocator2);
                 }
 
+                if (!insertSong.HasMember("char"))
+                    insertSong.AddMember("char", charStr, allocator2);
+                else
+                    insertSong["char"].SetString(charStr, allocator2);
+                if (!insertSong.HasMember("diff"))
+                    insertSong.AddMember("diff", diff, allocator2);
+                else
+                    insertSong["diff"].SetInt(diff);
                 if (!LoadFile(insertPath, document2))
                     throw std::invalid_argument("failed to load file which want to insert to");
 
@@ -400,6 +408,8 @@ bool FileUtils::UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPr
                 if (!WriteFile(path, document))
                     throw std::invalid_argument("failed to write file");
                 break;
+            default:
+                break;
         }
         return true;
     } catch (const std::exception &e) {
@@ -407,6 +417,76 @@ bool FileUtils::UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPr
         ERROR("Error loading playlist %s: %s", path.data(), e.what());
     }
     return false;
+}
+
+bool FileUtils::UpdateSongLock(const int selectedLevelIdx, const std::string &selectedLevelID, const std::string &path,
+                               const FILE_ACTION act, const std::string &charStr, const int diff) {
+    if (selectedLevelID.empty()) {
+        ERROR("Empty selected level id");
+        return false;
+    }
+
+    rapidjson::Document document;
+    if(path.empty() || !LoadFile(path, document)) {
+        ERROR("Failed to load file %s", path.c_str());
+        return false;
+    }
+
+    int idx = 0;
+    if (!FindSongIdx(document, selectedLevelIdx, selectedLevelID, idx)) {
+        ERROR("Failed to find %s in playlist dir %s", selectedLevelID.c_str(), path.c_str());
+        return false;
+    }
+
+    const auto &songs = document.GetObject()["songs"].GetArray();
+    rapidjson::Document::AllocatorType &allocator = document.GetAllocator();
+    if (ITEM_LOCK == act) {
+        if (!songs[idx].HasMember("char"))
+            songs[idx].AddMember("char", charStr, allocator);
+        else
+            songs[idx]["char"].SetString(charStr, allocator);
+        if (!songs[idx].HasMember("diff"))
+            songs[idx].AddMember("diff", diff, allocator);
+        else
+            songs[idx]["diff"].SetInt(diff);
+    } else { // ITEM_UNLOCK
+        if (songs[idx].HasMember("char"))
+            songs[idx].RemoveMember("char");
+        if (songs[idx].HasMember("diff"))
+            songs[idx].RemoveMember("diff");
+    }
+
+    if (!WriteFile(path, document)) {
+        ERROR("failed to write file");
+        return false;
+    }
+    return true;
+}
+
+bool FileUtils::FindSongCharDiff(const int selectedLevelIdx, const std::string &selectedLevelID, const std::string &path,
+                                 std::string &charSO, int &diff) {
+    charSO = "";
+    diff = 0;
+
+    rapidjson::Document document;
+    if(path.empty() || !LoadFile(path, document)) {
+        ERROR("failed to load file %s", path.c_str());
+        return false;
+    }
+
+    int idx = 0;
+    if (!FindSongIdx(document, selectedLevelIdx, selectedLevelID, idx)) {
+        ERROR("Failed to find %s in playlist dir %s", selectedLevelID.c_str(), path.c_str());
+        return false;
+    }
+    const auto &song = document.GetObject()["songs"].GetArray()[idx];
+    if (!song.HasMember("char") || !song.HasMember("diff"))
+        return false;
+
+    charSO = song["char"].GetString();
+    diff = song["diff"].GetInt();
+    ERROR("find song idx: %d, with char: %s, diff: %d", idx, charSO.c_str(), diff);
+    return true;
 }
 
 }

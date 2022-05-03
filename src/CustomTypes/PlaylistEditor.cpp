@@ -1,6 +1,9 @@
 #include "CustomTypes/PlaylistEditor.hpp"
 
 #include "GlobalNamespace/AnnotatedBeatmapLevelCollectionsGridView.hpp"
+#include "GlobalNamespace/BeatmapCharacteristicSegmentedControlController.hpp"
+#include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
+#include "GlobalNamespace/BeatmapDifficultySegmentedControlController.hpp"
 #include "GlobalNamespace/BeatmapLevelPack.hpp"
 #include "GlobalNamespace/CustomBeatmapLevelCollection.hpp"
 #include "GlobalNamespace/CustomBeatmapLevelPack.hpp"
@@ -191,13 +194,80 @@ int PlaylistEditor::GetSelectedPackIdx()
     return this->IsSelectedCustomCategory() ? AnnotatedBeatmapLevelCollectionsViewController->get_selectedItemIndex() : 0;
 }
 
+std::string PlaylistEditor::GetSelectedCharStr()
+{
+    return (this->StandardLevelDetailView &&
+           this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController() &&
+           this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController()->get_selectedBeatmapCharacteristic()) ?
+           this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController()->get_selectedBeatmapCharacteristic()->get_serializedName() : "";
+}
+
+int PlaylistEditor::GetSelectedDiff()
+{
+    return (this->StandardLevelDetailView &&
+           this->StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController()) ?
+           int(this->StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController()->get_selectedDifficulty()) : 0;
+}
+
+void PlaylistEditor::SelectLockCharDiff()
+{
+    if (!this->IsSelectedCustomPack() ||
+        !this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController()->get_selectedBeatmapCharacteristic())
+        return;
+
+    if (this->skipSelectLockTimes > 0) {
+        INFO("skip %d", skipSelectLockTimes);
+        this->skipSelectLockTimes--;
+        return;
+    }
+    const std::string path = this->fileUtils.GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID());
+    if (!fileUtils.FindSongCharDiff(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel()->get_levelID(), path,
+                                     this->selectedLockCharStr, this->selectedLockDiff))
+        return;
+
+    if (this->selectedLockCharStr.empty())
+        return;
+
+    const std::string preCharStr = this->GetSelectedCharStr();
+    if (this->selectedLockCharStr != preCharStr) {
+        auto charSOs = this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController()->dyn__beatmapCharacteristics()->dyn__items();
+        for (size_t i = 0; i < charSOs.size(); i++)
+        {
+            if (!charSOs[i]) // not knowing why it is
+                continue;
+            if (this->selectedLockCharStr != charSOs[i]->get_serializedName())
+                continue;
+
+            // select but not change difficultyBeatmapSet
+            this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController()->SetData(
+                this->difficultyBeatmapSets, charSOs[i]);
+            // change difficultyBeatmapSet
+            this->StandardLevelDetailView->HandleBeatmapCharacteristicSegmentedControlControllerDidSelectBeatmapCharacteristic(
+                this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController(), charSOs[i]);
+        }
+    }
+
+    const int preDiff = this->GetSelectedDiff();
+    if (this->selectedLockDiff != preDiff && this->difficultyBeatmaps) {
+        this->StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController()->SetData(this->difficultyBeatmaps, this->selectedLockDiff);
+        this->StandardLevelDetailView->HandleBeatmapDifficultySegmentedControlControllerDidSelectDifficulty( // useless
+            this->StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController(), this->selectedLockDiff);
+    }
+}
+
 bool PlaylistEditor::UpdateFileWithSelected(const FILE_ACTION act)
 {
     const std::string path = this->fileUtils.GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID());
-    return this->fileUtils.UpdateFile(this->GetSelectedCustomLevelIdx(),
-                                       this->GetSelectedCustomPreviewBeatmapLevel(),
-                                       path,
-                                       act);
+    if (ITEM_LOCK == act || ITEM_UNLOCK == act) {
+        return this->fileUtils.UpdateSongLock(this->GetSelectedCustomLevelIdx(),
+                                              this->GetSelectedCustomPreviewBeatmapLevel()->get_levelID(),
+                                              path,
+                                              act, this->GetSelectedCharStr(), this->GetSelectedDiff());
+    } else
+        return this->fileUtils.UpdateFile(this->GetSelectedCustomLevelIdx(),
+                                          this->GetSelectedCustomPreviewBeatmapLevel(),
+                                          path,
+                                          act);
 }
 
 bool PlaylistEditor::UpdateFileWithSelected(const FILE_ACTION act, const int selectedPackIdx, const std::string &selectedPackId)
@@ -206,7 +276,7 @@ bool PlaylistEditor::UpdateFileWithSelected(const FILE_ACTION act, const int sel
                                        this->GetSelectedCustomPreviewBeatmapLevel(),
                                        this->fileUtils.GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()),
                                        act,
-                                       this->fileUtils.GetPlaylistPath(selectedPackIdx, selectedPackId));
+                                       this->fileUtils.GetPlaylistPath(selectedPackIdx, selectedPackId), this->GetSelectedCharStr(), this->GetSelectedDiff());
 }
 
 void PlaylistEditor::CreateListActionButton()
@@ -273,6 +343,8 @@ void PlaylistEditor::ResetUI()
         this->listModal->SetActive(false);
     if (this->moveDownButton)
         this->moveDownButton->ResetUI();
+    if (this->lockButton)
+        this->lockButton->ResetUI();
     if (this->createListInput)
         this->createListInput->get_gameObject()->set_active(false);
     if (this->deleteListButton) {
@@ -473,7 +545,7 @@ void PlaylistEditor::CreateSongActionButton() {
         RuntimeSongLoader::API::DeleteSong(std::string(selectedlevel->get_customLevelPath()), [this] {
             Toast::GetInstance()->ShowMessage("Delete song");
             this->RemoveSelectedSongInAllPack(true);
-            this->RefreshAndStayList(REFESH_TYPE::SONG_STAY);
+            this->RefreshAndStayList(REFESH_TYPE::SONG_REMOVE_STAY);
         });
     });
 
@@ -488,7 +560,7 @@ void PlaylistEditor::CreateSongActionButton() {
                         this->RemoveSelectedSongInAllPack(true);
                     } else
                         Toast::GetInstance()->ShowMessage("Delete song");
-                    this->RefreshAndStayList(REFESH_TYPE::SONG_STAY);
+                    this->RefreshAndStayList(REFESH_TYPE::SONG_REMOVE_STAY);
                 }
             );
         }, FileToSprite("DeleteAndRemoveIcon"), "Delete and Remove Song from List");
@@ -501,7 +573,7 @@ void PlaylistEditor::CreateSongActionButton() {
                 Toast::GetInstance()->ShowMessage(this->IsSelectedCustomPack() ? "Remove song from the list" : "Remove song from all list");
                 if (this->IsSelectedCustomPack()) {
                     this->RemoveSelectedSongInPack();
-                    this->RefreshAndStayList(REFESH_TYPE::SONG_STAY);
+                    this->RefreshAndStayList(REFESH_TYPE::SONG_REMOVE_STAY);
                 } else
                     this->RemoveSelectedSongInAllPack(false);
             } else
@@ -580,6 +652,31 @@ void PlaylistEditor::CreateSongActionButton() {
             this->listModal->SetActive(true);
         }, FileToSprite("InsertIcon"), "Insert to List");
     this->insertButton->SetActive(false);
+
+    posX += 10.0f + 1.25f;
+    auto screenContainer = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([](auto x) {
+        return x->get_name()->Equals("ScreenContainer");
+    });
+    this->lockButton = new TwoStateIconButton("LockButton", screenContainer->get_transform(), "PracticeButton",
+                                              UnityEngine::Vector2(posX + 39.25f, -14.75f), UnityEngine::Vector2(9.0f,15.0f),
+        [&] () {
+            INFO("Lock char %s, diff %d",
+                std::string(this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController()->get_selectedBeatmapCharacteristic()->get_serializedName()).c_str(),
+                int(this->StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController()->get_selectedDifficulty()));
+            if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_LOCK)) {
+                this->selectedLockCharStr = this->GetSelectedCharStr();
+                this->selectedLockDiff = this->GetSelectedDiff();
+                Toast::GetInstance()->ShowMessage("Lock Selected Char and Diff");
+            }
+        }, FileToSprite("UnlockIcon"), "Lock Selected Char and Diff",
+        [&] () {
+            if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_UNLOCK)) {
+                this->selectedLockCharStr = "";
+                this->selectedLockDiff = 0;
+                Toast::GetInstance()->ShowMessage("UnLock Selected Char and Diff");
+            }
+        }, FileToSprite("LockIcon"), "UnLock Selected Char and Diff");
+    this->lockButton->SetActive(false);
 }
 
 void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casue don't know how to decide if now at main menu
@@ -614,6 +711,13 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
         this->moveDownButton->SetActive(!forceDisable && atCustomLevel);
         if (!atCustomPack)
             this->moveDownButton->SetInteractable(false);
+    }
+    if (this->lockButton) {
+        this->lockButton->SetActive(!forceDisable && atCustomPack && atCustomLevel); // not at pack header
+        if (!forceDisable && atCustomPack && atCustomLevel)
+            this->lockButton->SetIsFirstState(
+                this->selectedLockCharStr != this->GetSelectedCharStr() ||
+                this->selectedLockDiff != this->GetSelectedDiff());
     }
     if (this->createListButton)
         this->createListButton->SetActive(!forceDisable && atCustomCategory);
@@ -660,11 +764,14 @@ void PlaylistEditor::RefreshAndStayList(const REFESH_TYPE act)
             nextSelectedRow = selectedRow - 1;
             if (nextSelectedRow*rowHeight < lastScrollPos)
                 nextScrollPos = lastScrollPos - rowHeight;
-        } else if (SONG_STAY == act) {
+        } else if (SONG_REMOVE_STAY == act) {
             if (selectedRow >= this->LevelCollectionTableView->NumberOfCells())
                 nextSelectedRow = this->LevelCollectionTableView->NumberOfCells() - 1;
+        } else if (SONG_STAY == act) {
         }
     }
+    if (this->IsSelectedCustomPack() && this->IsSelectedCustomLevel() && SONG_REMOVE_STAY != act && PACK_DELETE != act)
+        this->skipSelectLockTimes += 2; // always trigger StandardLevelDetailViewController_ShowContent twice
 
     INFO("select level %d %f %f", nextSelectedRow, lastScrollPos, nextScrollPos);
     // this->LevelCollectionTableView->SelectLevel(nextPreviewBeatmapLevels); // this will jump to center

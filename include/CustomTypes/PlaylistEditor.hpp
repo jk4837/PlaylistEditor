@@ -5,6 +5,7 @@
 
 #include "GlobalNamespace/AnnotatedBeatmapLevelCollectionsViewController.hpp"
 #include "GlobalNamespace/CustomPreviewBeatmapLevel.hpp"
+#include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 #include "GlobalNamespace/LevelCollectionNavigationController.hpp"
 #include "GlobalNamespace/LevelCollectionTableView.hpp"
 #include "GlobalNamespace/LevelFilteringNavigationController.hpp"
@@ -17,6 +18,7 @@
 
 #include "CustomTypes/DoubleClickIconButton.hpp"
 #include "CustomTypes/ListModal.hpp"
+#include "CustomTypes/TwoStateIconButton.hpp"
 
 namespace PlaylistEditor
 {
@@ -27,27 +29,33 @@ public:
 
     static PlaylistEditor *GetInstance();
 
+    bool IsSelectedCustomPack();
+
     void Init(HMUI::FlowCoordinator *flowCoordinator);
     void CreateListActionButton();
     void CreateSongActionButton();
+    void SelectLockCharDiff();
     void AdjustUI(const bool forceDisable = false);   // use forceDisable, cause don't know how to decide if now at main menu
 
+    System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::IDifficultyBeatmap*>* difficultyBeatmaps = nullptr;
+    System::Collections::Generic::IReadOnlyList_1<::GlobalNamespace::IDifficultyBeatmapSet*>* difficultyBeatmapSets = nullptr;
 private:
     typedef enum REFESH_TYPE {
-        SONG_STAY, SONG_MOVE_UP, SONG_MOVE_DOWN, PACK_INSERT, PACK_DELETE
+        SONG_STAY, SONG_REMOVE_STAY, SONG_MOVE_UP, SONG_MOVE_DOWN, PACK_INSERT, PACK_DELETE
     } REFESH_TYPE_T;
 
     bool IsSelectedSoloOrPartyPlay();
     bool IsSelectedCustomCategory();
-    bool IsSelectedCustomPack();
     bool IsSelectedCustomLevel();
     GlobalNamespace::CustomPreviewBeatmapLevel *GetSelectedCustomPreviewBeatmapLevel();
     int GetSelectedCustomLevelIdx();
     const std::string GetSelectedPackID();
     int GetSelectedPackIdx();
+    std::string GetSelectedCharStr();
+    int GetSelectedDiff();
 
     bool UpdateFileWithSelected(const FILE_ACTION act);
-    bool UpdateFileWithSelected(const FILE_ACTION act, const int selectedPackIdx, const std::string &selectedPackId);
+    bool UpdateFileWithSelected(const FILE_ACTION act, const int selectedPackIdx, const std::string &selectedPackId); // for insert action
 
     void MoveUpSelectedSong();
     void MoveDownSelectedSong();
@@ -83,12 +91,17 @@ private:
     IconButton *moveDownButton = nullptr;
     IconButton *moveUpButton = nullptr;
     IconButton *removeButton = nullptr;
+    TwoStateIconButton *lockButton = nullptr;
     HMUI::InputFieldView *createListInput = nullptr;
     ListModal *listModal;
 
     int lastInsertPackIdx = -1;
     std::string lastInsertPackName = "";
     FileUtils fileUtils;
+
+    int skipSelectLockTimes = 0;
+    int selectedLockDiff = 0;
+    std::string selectedLockCharStr = "";
 };
 
 }

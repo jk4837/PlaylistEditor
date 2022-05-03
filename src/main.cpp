@@ -1,3 +1,9 @@
+#include "GlobalNamespace/BeatmapCharacteristicSegmentedControlController.hpp"
+#include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
+#include "GlobalNamespace/BeatmapDifficulty.hpp"
+#include "GlobalNamespace/BeatmapDifficultySegmentedControlController.hpp"
+#include "GlobalNamespace/IDifficultyBeatmap.hpp"
+#include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 #include "GlobalNamespace/MainFlowCoordinator.hpp"
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
 #include "GlobalNamespace/StandardLevelDetailViewController.hpp"
@@ -35,6 +41,7 @@ MAKE_HOOK_MATCH(FlowCoordinator_PresentFlowCoordinator, &HMUI::FlowCoordinator::
 MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &GlobalNamespace::StandardLevelDetailView::RefreshContent,
                 void, GlobalNamespace::StandardLevelDetailView *self)
 {
+    // when changing char or diff
     StandardLevelDetailView_RefreshContent(self);
     playlistEditor->AdjustUI();
 }
@@ -44,8 +51,10 @@ MAKE_HOOK_MATCH(StandardLevelDetailViewController_ShowContent, &GlobalNamespace:
                 GlobalNamespace::StandardLevelDetailViewController::ContentType contentType,
                 ::StringW errorText, float downloadingProgress, ::StringW downloadingText)
 {
+    // when select new level
     StandardLevelDetailViewController_ShowContent(self, contentType, errorText, downloadingProgress, downloadingText);
     playlistEditor->CreateSongActionButton();
+    playlistEditor->SelectLockCharDiff();
     playlistEditor->AdjustUI();
 }
 
@@ -56,6 +65,28 @@ MAKE_HOOK_MATCH(MainFlowCoordinator_DidActivate, &GlobalNamespace::MainFlowCoord
     INFO("MainFlowCoordinator_DidActivate");
     MainFlowCoordinator_DidActivate(self, firstActivation, addedToHierarchy, screenSystemEnabling);
     playlistEditor->AdjustUI(true);
+}
+
+// for getting difficultyBeatmaps
+MAKE_HOOK_MATCH(BeatmapDifficultySegmentedControlController_SetData, &GlobalNamespace::BeatmapDifficultySegmentedControlController::SetData,
+                void, GlobalNamespace::BeatmapDifficultySegmentedControlController *self,
+                System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::IDifficultyBeatmap*>* difficultyBeatmaps,
+                GlobalNamespace::BeatmapDifficulty selectedDifficulty)
+{
+    if (playlistEditor->IsSelectedCustomPack())
+        playlistEditor->difficultyBeatmaps = difficultyBeatmaps;
+    BeatmapDifficultySegmentedControlController_SetData(self, difficultyBeatmaps, selectedDifficulty);
+}
+
+// for getting difficultyBeatmapSets
+MAKE_HOOK_MATCH(BeatmapCharacteristicSegmentedControlController_SetData, &GlobalNamespace::BeatmapCharacteristicSegmentedControlController::SetData,
+                void, GlobalNamespace::BeatmapCharacteristicSegmentedControlController *self,
+                System::Collections::Generic::IReadOnlyList_1<::GlobalNamespace::IDifficultyBeatmapSet*>* difficultyBeatmapSets,
+                GlobalNamespace::BeatmapCharacteristicSO* selectedBeatmapCharacteristic)
+{
+    if (playlistEditor->IsSelectedCustomPack())
+        playlistEditor->difficultyBeatmapSets = difficultyBeatmapSets;
+    BeatmapCharacteristicSegmentedControlController_SetData(self, difficultyBeatmapSets, selectedBeatmapCharacteristic);
 }
 
 // Called at the early stages of game loading
@@ -80,5 +111,7 @@ extern "C" void load() {
     INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), StandardLevelDetailViewController_ShowContent);
     INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), StandardLevelDetailView_RefreshContent);
     INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), FlowCoordinator_PresentFlowCoordinator);
+    INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), BeatmapDifficultySegmentedControlController_SetData);
+    INSTALL_HOOK(PlaylistEditor::Logging::getLogger(), BeatmapCharacteristicSegmentedControlController_SetData);
     INFO("Installed all hooks!");
 }
