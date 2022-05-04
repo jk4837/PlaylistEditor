@@ -30,7 +30,7 @@ public:
 private:
     static bool WriteFile(const std::string &path, rapidjson::Document &document);
     static bool LoadFile(const std::string &path, rapidjson::Document &document);
-    static bool AppendData(rapidjson::Document &document, const rapidjson::Document &bkpDocument);
+    static void AppendData(rapidjson::Document &document, const rapidjson::Document &bkpDocument);
     static void BackupFile(const std::string &path);
     bool FindSongIdx(const rapidjson::Document &document, const int selectedLevelIdx, const std::string &selectedLevelID, int &idx);
     bool FindAllSongIdx(const rapidjson::Document &document, const std::string &selectedLevelID, std::vector<int> &idxs);

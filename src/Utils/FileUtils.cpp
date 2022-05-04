@@ -161,32 +161,45 @@ bool FileUtils::ShrinkPlaylistPath() { // for multiple _BMBF.json
     return hasShrink;
 }
 
-// TODO: handle error cond
-// TODO: better append logic
-bool FileUtils::AppendData(rapidjson::Document &document, const rapidjson::Document &bkpDocument) {
+void FileUtils::AppendData(rapidjson::Document &document, const rapidjson::Document &bkpDocument) {
     rapidjson::Document::AllocatorType &allocator = document.GetAllocator();
     const auto &songs = document.GetObject()["songs"].GetArray();
     const auto &bkpSongs = bkpDocument.GetObject()["songs"].GetArray();
+    bool isDataDifferentWithBackupData = false;
 
     if (songs.Size() != bkpSongs.Size()) {
-        INFO("AppendData with diff size, songs %u <> bkpSongs %u", songs.Size(), bkpSongs.Size());
+        isDataDifferentWithBackupData = true;
     }
-    for (rapidjson::SizeType i = 0, j = 0; i < songs.Size() && j < bkpSongs.Size(); i++) {
-        if (0 != strcasecmp(songs[i]["hash"].GetString(), bkpSongs[j]["hash"].GetString())) {
-            if (songs.Size() < bkpSongs.Size()) { // guess user had deleted some songs by BMBF
-                INFO("Skip backup hash %s", bkpSongs[j]["hash"].GetString());
-                i--;
-                j++;
-            } else if (songs.Size() > bkpSongs.Size()) { // guess user had added some songs by BMBF
-                INFO("Skip hash %s", songs[i]["hash"].GetString());
-            } else { // guess user had added and delete some songs or just change order by BMBF
-                INFO("Todo loop to j end to find match song %s", songs[i]["hash"].GetString());
-            }
+
+    // logic can test with src/Test/AppendDataTest.cpp
+    for (rapidjson::SizeType i = 0, j = 0; i < songs.Size(); i++) {
+        if (j < bkpSongs.Size() &&
+            0 == strcasecmp(songs[i]["hash"].GetString(), bkpSongs[j]["hash"].GetString())) {
+            songs[i].CopyFrom(bkpSongs[j++], allocator);
             continue;
         }
-        songs[i].CopyFrom(bkpSongs[j++], allocator);
+        isDataDifferentWithBackupData = true;
+        // Looking from j-th to begin and end
+        j = std::min(bkpSongs.Size() - 1, j);
+        for (int k1 = j, k2 = j + 1; // k1 can't not be unsigned int
+             k1 >= 0 || k2 < bkpSongs.Size();
+             k1--, k2++) {
+            if (k1 >= 0 &&
+                0 == strcasecmp(songs[i]["hash"].GetString(), bkpSongs[k1]["hash"].GetString())) {
+                songs[i].CopyFrom(bkpSongs[k1], allocator);
+                j = k1 + 1;
+                break;
+            }
+            if (k2 < bkpSongs.Size() &&
+                0 == strcasecmp(songs[i]["hash"].GetString(), bkpSongs[k2]["hash"].GetString())) {
+                songs[i].CopyFrom(bkpSongs[k2], allocator);
+                j = k2 + 1;
+                break;
+            }
+        }
     }
-    return true;
+    if (isDataDifferentWithBackupData)
+        PlaylistEditor::Toast::GetInstance()->ShowMessage("Playlist Editor: The order of songs in the playlist was modified");
 }
 
 bool FileUtils::AppendPlaylistData() { // for appending extra data that may delete by BMBF
