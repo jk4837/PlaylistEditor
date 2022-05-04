@@ -32,6 +32,10 @@ void FileUtils::BackupFile(const std::string &path) {
     std::filesystem::copy_file(path, GetBackupFilePath(path), std::filesystem::copy_options::overwrite_existing);
 }
 
+void FileUtils::RemoveTmpDir() {
+    std::filesystem::remove_all(Utils::ModPackTmpPath);
+}
+
 bool FileUtils::WriteFile(const std::string &path, rapidjson::Document &document) {
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -165,10 +169,9 @@ void FileUtils::AppendData(rapidjson::Document &document, const rapidjson::Docum
     rapidjson::Document::AllocatorType &allocator = document.GetAllocator();
     const auto &songs = document.GetObject()["songs"].GetArray();
     const auto &bkpSongs = bkpDocument.GetObject()["songs"].GetArray();
-    bool isDataDifferentWithBackupData = false;
 
     if (songs.Size() != bkpSongs.Size()) {
-        isDataDifferentWithBackupData = true;
+        askUserRestore = true;
     }
 
     // logic can test with src/Test/AppendDataTest.cpp
@@ -178,7 +181,7 @@ void FileUtils::AppendData(rapidjson::Document &document, const rapidjson::Docum
             songs[i].CopyFrom(bkpSongs[j++], allocator);
             continue;
         }
-        isDataDifferentWithBackupData = true;
+        askUserRestore = true;
         // Looking from j-th to begin and end
         j = std::min(bkpSongs.Size() - 1, j);
         for (int k1 = j, k2 = j + 1; // k1 can't not be unsigned int
@@ -198,20 +201,25 @@ void FileUtils::AppendData(rapidjson::Document &document, const rapidjson::Docum
             }
         }
     }
-    if (isDataDifferentWithBackupData)
-        PlaylistEditor::Toast::GetInstance()->ShowMessage("Playlist Editor: The order of songs in the playlist was modified");
 }
 
-bool FileUtils::AppendPlaylistData() { // for appending extra data that may delete by BMBF
-    bool hasAppend = false;
+void FileUtils::AppendPlaylistData() { // for appending extra data that may delete by BMBF
+    askUserRestore = false;
+
     if(!std::filesystem::is_directory(Utils::CustomLevelPackPath)) {
         INFO("Don't have playlist dir %s", Utils::CustomLevelPackPath.c_str());
-        return false;
+        return;
     }
 
-    if(!std::filesystem::is_directory(Utils::ModPackPath))
-        std::filesystem::create_directory(Utils::ModPackPath);
+    if(std::filesystem::is_directory(Utils::ModPackPath)) {
+        std::filesystem::remove_all(Utils::ModPackTmpPath);
+        std::filesystem::rename(Utils::ModPackPath, Utils::ModPackTmpPath);
+    } else
+        std::filesystem::create_directory(Utils::ModPackTmpPath);
 
+    std::filesystem::create_directory(Utils::ModPackPath);
+
+    std::vector<std::string> playlistFilename;
     for (const auto &entry : std::filesystem::directory_iterator(Utils::CustomLevelPackPath)) {
         if(entry.is_directory())
             continue;
@@ -221,24 +229,61 @@ bool FileUtils::AppendPlaylistData() { // for appending extra data that may dele
         const auto path = entry.path().string();
         const auto filename = entry.path().filename().string();
         const auto bkpPath = Utils::ModPackPath + filename;
+        const auto tmpPath = Utils::ModPackTmpPath + filename;
 
         if (!LoadFile(path, document))
             continue;
 
         if (!document.GetObject().HasMember("appendPlaylistEditorData")) {
-            hasAppend = true;
             document.AddMember("appendPlaylistEditorData", true, allocator);
-            if (std::filesystem::is_regular_file(bkpPath)) {
+            if (std::filesystem::is_regular_file(tmpPath)) {
                 rapidjson::Document bkpDocument;
-                if (LoadFile(bkpPath, bkpDocument)) {
+                if (LoadFile(tmpPath, bkpDocument)) {
                     AppendData(document, bkpDocument);
                 }
             }
             WriteFile(path, document); // will backup in function
             INFO("Append extra data for playlist %s", path.c_str());
+        } else
+            BackupFile(path);
+
+        playlistFilename.push_back(filename);
+    }
+
+    if (!askUserRestore) {
+        // see if any old playlist being deleted or created
+        std::vector<std::string> playlistBkpFilename;
+        for (const auto &entry : std::filesystem::directory_iterator(Utils::ModPackTmpPath)) {
+            if(entry.is_directory())
+                continue;
+
+            playlistBkpFilename.push_back(entry.path().filename().string());
+        }
+        if (playlistFilename.size() != playlistBkpFilename.size()) {
+            askUserRestore = true;
+            return;
+        }
+        std::sort(playlistFilename.begin(), playlistFilename.end());
+        std::sort(playlistBkpFilename.begin(), playlistBkpFilename.end());
+        for (int i = 0; i < playlistFilename.size(); i++) {
+            if (playlistFilename[i] != playlistBkpFilename[i]) {
+                askUserRestore = true;
+                return;
+            }
         }
     }
-    return hasAppend;
+}
+
+void FileUtils::RestorePlaylistFile() {
+    for (const auto &entry : std::filesystem::directory_iterator(Utils::CustomLevelPackPath)) {
+        if(entry.is_directory())
+            continue;
+        std::filesystem::remove(entry.path());
+    }
+
+    std::filesystem::copy(Utils::ModPackTmpPath, Utils::CustomLevelPackPath);
+    std::filesystem::remove_all(Utils::ModPackPath);
+    std::filesystem::rename(Utils::ModPackTmpPath, Utils::ModPackPath);
 }
 
 void FileUtils::ReloadPlaylistPath() {

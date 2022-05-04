@@ -5,6 +5,7 @@
 #include "CustomTypes/DoubleClickIconButton.hpp"
 #include "Utils/Utils.hpp"
 
+#include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "HMUI/ImageView.hpp"
 #include "HMUI/InputFieldView_InputFieldChanged.hpp"
 #include "Polyglot/LocalizedTextMeshProUGUI.hpp"
@@ -15,6 +16,7 @@
 #include "UnityEngine/UI/Button_ButtonClickedEvent.hpp"
 #include "UnityEngine/UI/Button.hpp"
 #include "UnityEngine/UI/Image.hpp"
+#include "UnityEngine/WaitForFixedUpdate.hpp"
 #include "questui/shared/BeatSaberUI.hpp"
 #include "questui/shared/CustomTypes/Components/WeakPtrGO.hpp"
 
@@ -101,6 +103,60 @@ HMUI::InputFieldView *CreateStringInput(UnityEngine::Transform *parent, const St
     fieldView->SetText(currentValue);
 
     return fieldView;
+}
+
+static HMUI::ModalView *CreateRestoreDialog(UnityEngine::Transform *parent, const std::function<void(void)> &onOK, const std::function<void(void)> &onCancel)
+{
+    const int width = 65;
+    const int height = 33+8.5;
+    auto restoreDialogPromptModal = QuestUI::BeatSaberUI::CreateModal(parent, UnityEngine::Vector2(width, height), [onCancel] (HMUI::ModalView*) {
+        onCancel();
+    });
+
+    auto restoreButton = QuestUI::BeatSaberUI::CreateUIButton(restoreDialogPromptModal->get_transform(), "Restore", "ActionButton",
+                                                              UnityEngine::Vector2(-width/4, -height/2 + 5.5), [restoreDialogPromptModal, onOK] {
+        restoreDialogPromptModal->Hide(true, nullptr);
+        onOK();
+    });
+    UnityEngine::Object::Destroy(restoreButton->get_transform()->Find("Content")->GetComponent<UnityEngine::UI::LayoutElement*>());
+
+    auto cancelButton = QuestUI::BeatSaberUI::CreateUIButton(restoreDialogPromptModal->get_transform(), "Cancel",
+                                                             UnityEngine::Vector2(width/4, -height/2 + 5.5), [restoreDialogPromptModal, onCancel] {
+        restoreDialogPromptModal->Hide(true, nullptr);
+        onCancel();
+    });
+    UnityEngine::Object::Destroy(cancelButton->get_transform()->Find("Content")->GetComponent<UnityEngine::UI::LayoutElement*>());
+
+    TMPro::TextMeshProUGUI* title = QuestUI::BeatSaberUI::CreateText(restoreDialogPromptModal->get_transform(), "PLAYLIST EDITOR", false, {0, height/2 - 5.5}, {width-5, 8.5});
+    title->set_alignment(TMPro::TextAlignmentOptions::Center);
+    title->set_fontStyle(TMPro::FontStyles::_get_Bold());
+
+    TMPro::TextMeshProUGUI* message = QuestUI::BeatSaberUI::CreateText(restoreDialogPromptModal->get_transform(),
+                                      "Playlists was modified, changes made by Playlist Editor may lost, do you want to restore playlists with backup file?", false, {0, 0.5}, {width-5, 25.5});  // line height 8.5
+    message->set_enableWordWrapping(true);
+    message->set_overflowMode(TMPro::TextOverflowModes::Ellipsis);
+    message->set_alignment(TMPro::TextAlignmentOptions::Center);
+
+    restoreDialogPromptModal->get_transform()->SetAsLastSibling();
+    return restoreDialogPromptModal;
+}
+
+static custom_types::Helpers::Coroutine DoShowRestoreDialog(UnityEngine::Transform *parent,
+                                                            const std::function<void(void)> onOK, const std::function<void(void)> onCancel) // can not be reference, will crash
+{
+    co_yield reinterpret_cast<System::Collections::IEnumerator *>(UnityEngine::WaitForFixedUpdate::New_ctor());
+
+    auto prompt = CreateRestoreDialog(parent, onOK, onCancel);
+    if (prompt)
+        prompt->Show(true, true, nullptr);
+
+    co_return;
+}
+
+void ShowRestoreDialog(UnityEngine::Transform *parent, const std::function<void(void)> &onOK, const std::function<void(void)> &onCancel)
+{
+    // use coroutine or will showing without focus
+    GlobalNamespace::SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(DoShowRestoreDialog(parent, onOK, onCancel)));
 }
 
 }

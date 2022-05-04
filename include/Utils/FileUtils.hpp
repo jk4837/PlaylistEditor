@@ -15,7 +15,9 @@ class FileUtils
 {
 public:
     static bool ShrinkPlaylistPath();
-    static bool AppendPlaylistData();
+    static void AppendPlaylistData();
+    static void RestorePlaylistFile();
+    static void RemoveTmpDir();
     void ReloadPlaylistPath();
     std::string GetPlaylistPath(const int listIdx, const std::string &listID, const bool canRefresh = true);
     bool CreateFile(const std::string &name);
@@ -26,6 +28,8 @@ public:
                         const FILE_ACTION act, const std::string &charStr = "", const int diff = -1);
     bool FindSongCharDiff(const int selectedLevelIdx, const std::string &selectedLevelID, const std::string &path,
                           std::string &charSO, int &diff);
+
+    inline static bool askUserRestore = false;
 
 private:
     static bool WriteFile(const std::string &path, rapidjson::Document &document);

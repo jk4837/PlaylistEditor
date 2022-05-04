@@ -7,6 +7,7 @@
 #include "GlobalNamespace/MainFlowCoordinator.hpp"
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
 #include "GlobalNamespace/StandardLevelDetailViewController.hpp"
+#include "UnityEngine/Resources.hpp"
 #include "HMUI/FlowCoordinator.hpp"
 #include "HMUI/ViewController_AnimationDirection.hpp"
 #include "System/Action.hpp"
@@ -17,6 +18,7 @@
 #include "CustomTypes/PlaylistEditor.hpp"
 #include "CustomTypes/Logging.hpp"
 #include "Utils/FileUtils.hpp"
+#include "Utils/UIUtils.hpp"
 
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
 static PlaylistEditor::PlaylistEditor *playlistEditor = nullptr;
@@ -58,6 +60,25 @@ MAKE_HOOK_MATCH(StandardLevelDetailViewController_ShowContent, &GlobalNamespace:
     playlistEditor->AdjustUI();
 }
 
+static void showRestoreDialog()
+{
+    auto mainScreen = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([] (auto x) {
+        return x->get_name()->Equals("MainScreen");
+    });
+    PlaylistEditor::Utils::ShowRestoreDialog(mainScreen, [&] () {
+        INFO("Restore playlists");
+        PlaylistEditor::FileUtils::RestorePlaylistFile();
+
+        INFO("Refresh playlists");
+        auto customBeatmapLevelPackCollectionSO = UnityEngine::Resources::FindObjectsOfTypeAll<RuntimeSongLoader::SongLoaderBeatmapLevelPackCollectionSO*>().First();
+        customBeatmapLevelPackCollectionSO->ClearLevelPacks();
+        PlaylistManager::LoadPlaylists(customBeatmapLevelPackCollectionSO, true);
+        RuntimeSongLoader::API::RefreshPacks(true);
+    }, [] () {
+        INFO("Not restore playlists");
+        PlaylistEditor::FileUtils::RemoveTmpDir();
+    });
+}
 
 MAKE_HOOK_MATCH(MainFlowCoordinator_DidActivate, &GlobalNamespace::MainFlowCoordinator::DidActivate, void, GlobalNamespace::MainFlowCoordinator *self,
                 bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
@@ -65,6 +86,11 @@ MAKE_HOOK_MATCH(MainFlowCoordinator_DidActivate, &GlobalNamespace::MainFlowCoord
     INFO("MainFlowCoordinator_DidActivate");
     MainFlowCoordinator_DidActivate(self, firstActivation, addedToHierarchy, screenSystemEnabling);
     playlistEditor->AdjustUI(true);
+    if (PlaylistEditor::FileUtils::askUserRestore) {
+        PlaylistEditor::FileUtils::askUserRestore = false;
+        showRestoreDialog();
+    } else
+        PlaylistEditor::FileUtils::RemoveTmpDir();
 }
 
 // for getting difficultyBeatmaps

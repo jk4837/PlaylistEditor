@@ -7,6 +7,7 @@
 namespace PlaylistEditor::Utils
 {
 const std::string ModPackPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/" ID "/Playlists/";
+const std::string ModPackTmpPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/" ID "/PlaylistsTmp/";
 const std::string CustomLevelPackPath = "/sdcard/ModData/com.beatgames.beatsaber/Mods/PlaylistManager/Playlists/";
 const std::string IconPathTemplate = "/sdcard/ModData/com.beatgames.beatsaber/Mods/" ID "/Icons/%s.png";
 const std::string CustomLevelPackPrefixID = "custom_levelPack_";

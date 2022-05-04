@@ -24,6 +24,8 @@ HMUI::InputFieldView *CreateStringInput(UnityEngine::Transform *parent, const St
                                         const UnityEngine::Vector2 &anchoredPosition, const float width,
                                         const std::function<void(StringW)> &onEnter);
 
+void ShowRestoreDialog(UnityEngine::Transform *parent, const std::function<void(void)> &onOK, const std::function<void(void)> &onCancel);
+
 template <class T>
 void listAllName(UnityEngine::Transform *parent, const std::string &prefix = "") {
     INFO("%s #p: tag: %s, name: %s, id: %u", prefix.c_str(), std::string(parent->get_tag()).c_str(), std::string(parent->get_name()).c_str(), parent->GetInstanceID());
