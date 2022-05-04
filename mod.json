@@ -50,6 +50,14 @@
 	  {
 		"name": "UnlockIcon.png",
 		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/UnlockIcon.png"
+	  },
+	  {
+		"name": "AddImageIcon.png",
+		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/AddImageIcon.png"
+	  },
+	  {
+		"name": "DeleteImageIcon.png",
+		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/DeleteImageIcon.png"
 	  }
 	]
 }

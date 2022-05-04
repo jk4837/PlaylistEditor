@@ -63,6 +63,8 @@ if ($useDebug -eq $true) {
 & adb push ExtraFiles/Icons/EnterIcon.png /sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/EnterIcon.png
 & adb push ExtraFiles/Icons/LockIcon.png /sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/LockIcon.png
 & adb push ExtraFiles/Icons/UnlockIcon.png /sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/UnlockIcon.png
+& adb push ExtraFiles/Icons/AddImageIcon.png /sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/AddImageIcon.png
+& adb push ExtraFiles/Icons/DeleteImageIcon.png /sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/DeleteImageIcon.png
 
 & $PSScriptRoot/restart-game.ps1
 

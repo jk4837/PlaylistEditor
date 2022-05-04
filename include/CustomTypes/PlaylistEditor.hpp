@@ -13,6 +13,7 @@
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
 #include "HMUI/FlowCoordinator.hpp"
 #include "HMUI/ModalView.hpp"
+#include "UnityEngine/Sprite.hpp"
 #include "UnityEngine/UI/Button.hpp"
 #include "questui/shared/CustomTypes/Components/ClickableText.hpp"
 
@@ -47,6 +48,7 @@ private:
     bool IsSelectedSoloOrPartyPlay();
     bool IsSelectedCustomCategory();
     bool IsSelectedCustomLevel();
+    bool IsSelectedCustomPackUsingDefaultCover();
     GlobalNamespace::CustomPreviewBeatmapLevel *GetSelectedCustomPreviewBeatmapLevel();
     int GetSelectedCustomLevelIdx();
     const std::string GetSelectedPackID();
@@ -64,6 +66,7 @@ private:
     void RemoveSongsInPack(GlobalNamespace::IBeatmapLevelCollection *beatmapLevelCollection, const StringW &levelID);
     void RemoveSelectedSongInAllPack(const bool includeCustomLevel);
     void RemoveSongsInFilterList(const StringW &levelID);
+    void SetSelectedCoverImage(const int collectionIdx, UnityEngine::Sprite *image = nullptr);
 
     void AcquiredObject();
     void RegistEvent();
@@ -92,6 +95,7 @@ private:
     IconButton *moveUpButton = nullptr;
     IconButton *removeButton = nullptr;
     TwoStateIconButton *lockButton = nullptr;
+    TwoStateIconButton *imageListButton = nullptr;
     HMUI::InputFieldView *createListInput = nullptr;
     ListModal *listModal;
 

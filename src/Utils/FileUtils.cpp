@@ -365,6 +365,28 @@ static std::string GetCoverImageBase64String(GlobalNamespace::CustomPreviewBeatm
     return "data:image/png;base64," + System::Convert::ToBase64String(byteArray);
 }
 
+bool FileUtils::SetCoverImage(const std::string &path, GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel)
+{
+    rapidjson::Document document;
+
+    if(path.empty() | !LoadFile(path, document)) {
+        ERROR("Failed to load file %s", path.c_str());
+        return false;
+    }
+
+    if (selectedLevel) {
+        rapidjson::Document::AllocatorType &allocator = document.GetAllocator();
+        document.GetObject()["image"].SetString(GetCoverImageBase64String(selectedLevel), allocator);
+    } else
+        document.GetObject()["image"].SetNull();
+
+    if (!WriteFile(path, document)) {
+        ERROR("Failed to write file");
+        return false;
+    }
+    return true;
+}
+
 bool FileUtils::UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel, const std::string &path,
                 const FILE_ACTION act, const std::string &insertPath, const std::string &charStr, const int diff) {
     try {

@@ -12,6 +12,7 @@
 #include "GlobalNamespace/IAnnotatedBeatmapLevelCollection.hpp"
 #include "GlobalNamespace/IBeatmapLevelCollection.hpp"
 #include "GlobalNamespace/LevelCollectionViewController.hpp"
+#include "GlobalNamespace/LevelPackDetailViewController.hpp"
 #include "GlobalNamespace/LevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelSelectionNavigationController.hpp"
 #include "GlobalNamespace/PartyFreePlayFlowCoordinator.hpp"
@@ -170,6 +171,15 @@ bool PlaylistEditor::IsSelectedCustomLevel()
                                                       il2cpp_functions::object_get_class(reinterpret_cast<Il2CppObject*>(this->LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel())));
 }
 
+bool PlaylistEditor::IsSelectedCustomPackUsingDefaultCover()
+{
+    if (!this->IsSelectedCustomPack())
+        return false;
+
+    auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+    return annotatedBeatmapLevelCollections[0]->get_coverImage() == annotatedBeatmapLevelCollections[this->GetSelectedPackIdx()]->get_coverImage();
+}
+
 GlobalNamespace::CustomPreviewBeatmapLevel *PlaylistEditor::GetSelectedCustomPreviewBeatmapLevel()
 {
     return (this->LevelCollectionTableView && this->LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel()) ?
@@ -279,6 +289,20 @@ bool PlaylistEditor::UpdateFileWithSelected(const FILE_ACTION act, const int sel
                                        this->fileUtils.GetPlaylistPath(selectedPackIdx, selectedPackId), this->GetSelectedCharStr(), this->GetSelectedDiff());
 }
 
+void PlaylistEditor::SetSelectedCoverImage(const int collectionIdx, UnityEngine::Sprite *image)
+{
+    auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+
+    if (!image)
+        image = annotatedBeatmapLevelCollections[0]->get_coverImage(); // default cover
+    reinterpret_cast<::GlobalNamespace::CustomBeatmapLevelPack*>(annotatedBeatmapLevelCollections[collectionIdx])->dyn_$smallCoverImage$k__BackingField() = image;
+    reinterpret_cast<::GlobalNamespace::CustomBeatmapLevelPack*>(annotatedBeatmapLevelCollections[collectionIdx])->dyn_$coverImage$k__BackingField() = image;
+    this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollectionsGridView()->dyn__gridView()->ReloadData();
+
+    if (this->IsSelectedCustomPack() && !this->IsSelectedCustomLevel()) // select pack header
+        this->LevelCollectionNavigationController->dyn__levelPackDetailViewController()->dyn__packImage()->set_sprite(image);
+}
+
 void PlaylistEditor::CreateListActionButton()
 {
     if (!this->init)
@@ -327,6 +351,27 @@ void PlaylistEditor::CreateListActionButton()
                                         this->RefreshAndStayList(REFESH_TYPE::PACK_DELETE);
                                     }
         }, FileToSprite("DeleteIcon"), "Delete List");
+
+    // button exceed region of LevelFilteringNavigationController, so using ScreenContainer to be parent
+    auto screenContainer = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([](auto x) {
+        return x->get_name()->Equals("ScreenContainer");
+    });
+
+    if (!this->imageListButton)
+        this->imageListButton = new TwoStateIconButton("ImageListButton", screenContainer, "PracticeButton",
+                                                           UnityEngine::Vector2(80.0f, 33.0f), UnityEngine::Vector2(10.0f, 7.0f),
+                                    [this] () {
+                                        if (this->fileUtils.SetCoverImage(this->fileUtils.GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()))) {
+                                            this->SetSelectedCoverImage(this->GetSelectedPackIdx());
+                                            Toast::GetInstance()->ShowMessage("Delete cover image");
+                                        }
+                                    }, FileToSprite("DeleteImageIcon"), "Delete Cover Image",
+                                    [this] () {
+                                        if (this->fileUtils.SetCoverImage(this->fileUtils.GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()), this->GetSelectedCustomPreviewBeatmapLevel())) {
+                                            this->SetSelectedCoverImage(this->GetSelectedPackIdx(), this->GetSelectedCustomPreviewBeatmapLevel()->dyn__coverImage());
+                                            Toast::GetInstance()->ShowMessage("Set cover image");
+                                        }
+                                    }, FileToSprite("AddImageIcon"), "Set Cover Image with Selected Level Image");
 }
 
 void PlaylistEditor::ResetUI()
@@ -350,6 +395,8 @@ void PlaylistEditor::ResetUI()
     if (this->deleteListButton) {
         this->deleteListButton->ResetUI();
     }
+    if (this->imageListButton)
+        this->imageListButton->ResetUI();
 }
 
 void PlaylistEditor::MoveUpSelectedSong() {
@@ -522,10 +569,7 @@ void PlaylistEditor::InsertSelectedSongToPack(const int collectionIdx) {
     // process cover image if not default image
     if (annotatedBeatmapLevelCollections[0]->get_coverImage() != annotatedBeatmapLevelCollections[collectionIdx]->get_coverImage())
         return;
-    auto image = this->GetSelectedCustomPreviewBeatmapLevel()->dyn__coverImage();
-    reinterpret_cast<::GlobalNamespace::CustomBeatmapLevelPack*>(annotatedBeatmapLevelCollections[collectionIdx])->dyn_$smallCoverImage$k__BackingField() = image;
-    reinterpret_cast<::GlobalNamespace::CustomBeatmapLevelPack*>(annotatedBeatmapLevelCollections[collectionIdx])->dyn_$coverImage$k__BackingField() = image;
-    this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollectionsGridView()->dyn__gridView()->ReloadData();
+    this->SetSelectedCoverImage(collectionIdx, this->GetSelectedCustomPreviewBeatmapLevel()->dyn__coverImage());
 }
 
 void PlaylistEditor::CreateSongActionButton() {
@@ -725,6 +769,14 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
         this->deleteListButton->SetActive(!forceDisable && atCustomCategory);
         if (!atCustomPack)
             this->deleteListButton->SetInteractable(false);
+    }
+    if (this->imageListButton) {
+        bool isDefaultCover = this->IsSelectedCustomPackUsingDefaultCover();
+
+        this->imageListButton->SetActive(!forceDisable && atCustomCategory);
+        if (!atCustomPack || (isDefaultCover && atCustomPack && !atCustomLevel)) // || at pack header
+            this->imageListButton->SetInteractable(false);
+        this->imageListButton->SetIsFirstState(!isDefaultCover);
     }
 }
 

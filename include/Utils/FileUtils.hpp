@@ -28,6 +28,7 @@ public:
                         const FILE_ACTION act, const std::string &charStr = "", const int diff = -1);
     bool FindSongCharDiff(const int selectedLevelIdx, const std::string &selectedLevelID, const std::string &path,
                           std::string &charSO, int &diff);
+    bool SetCoverImage(const std::string &path, GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel = nullptr);
 
     inline static bool askUserRestore = false;
 
