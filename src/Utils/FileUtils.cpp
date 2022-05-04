@@ -329,7 +329,7 @@ bool FileUtils::UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPr
                 rapidjson::Value insertSong(rapidjson::kObjectType);
 
                 if (!path.empty() && FindSongIdx(document, selectedLevelIdx, selectedLevelID, idx))
-                    insertSong = songs[idx];
+                    insertSong.CopyFrom(songs[idx], allocator2);
                 else {
                     insertSong.SetObject();
                     insertSong.AddMember("songName", std::string(selectedLevel->get_songName()), allocator2);
