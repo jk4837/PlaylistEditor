@@ -14,7 +14,6 @@
 #include "GlobalNamespace/LevelCollectionViewController.hpp"
 #include "GlobalNamespace/LevelPackDetailViewController.hpp"
 #include "GlobalNamespace/LevelSelectionFlowCoordinator.hpp"
-#include "GlobalNamespace/LevelSelectionNavigationController.hpp"
 #include "GlobalNamespace/PartyFreePlayFlowCoordinator.hpp"
 #include "GlobalNamespace/SelectLevelCategoryViewController.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
@@ -67,16 +66,16 @@ void PlaylistEditor::AcquiredObject()
 {
     auto LevelSelectionFlowCoordinator = il2cpp_utils::cast<GlobalNamespace::LevelSelectionFlowCoordinator>(this->FlowCoordinator);
     // gather flow coordinator elements
-    auto LevelSelectionNavigationController = LevelSelectionFlowCoordinator->dyn_levelSelectionNavigationController();
-    INFO("Acquired LevelSelectionNavigationController [%d]", LevelSelectionNavigationController->GetInstanceID());
+    this->LevelSelectionNavigationController = LevelSelectionFlowCoordinator->dyn_levelSelectionNavigationController();
+    INFO("Acquired LevelSelectionNavigationController [%d]", this->LevelSelectionNavigationController->GetInstanceID());
 
     this->LevelSearchViewController = LevelSelectionFlowCoordinator->dyn__levelSearchViewController();
     INFO("Acquired LevelSearchViewController [%d]", this->LevelSearchViewController->GetInstanceID());
 
-    this->LevelFilteringNavigationController = LevelSelectionNavigationController->dyn__levelFilteringNavigationController();
+    this->LevelFilteringNavigationController = this->LevelSelectionNavigationController->dyn__levelFilteringNavigationController();
     INFO("Acquired LevelFilteringNavigationController [%d]", this->LevelFilteringNavigationController->GetInstanceID());
 
-    this->LevelCollectionNavigationController = LevelSelectionNavigationController->dyn__levelCollectionNavigationController();
+    this->LevelCollectionNavigationController = this->LevelSelectionNavigationController->dyn__levelCollectionNavigationController();
     INFO("Acquired LevelCollectionNavigationController [%d]", this->LevelCollectionNavigationController->GetInstanceID());
 
     auto LevelCollectionViewController = this->LevelCollectionNavigationController->dyn__levelCollectionViewController();
@@ -138,6 +137,34 @@ void PlaylistEditor::RegistEvent()
         };
         this->AnnotatedBeatmapLevelCollectionsViewController->add_didSelectAnnotatedBeatmapLevelCollectionEvent(
             Utils::MakeDelegate<System::Action_1<GlobalNamespace::IAnnotatedBeatmapLevelCollection*>*>(didSelectAnnotatedBeatmapLevelCollectionEventFun));
+    }
+
+    if (!this->LevelSelectionNavigationController->dyn_didPressActionButtonEvent()->dyn_delegates()) { // event removed useless, always execute twice when out and in
+        INFO("Add event LevelSelectionNavigationController->dyn_didPressActionButtonEvent()");
+        std::function<void(GlobalNamespace::LevelSelectionNavigationController*)> didPressActionButtonEventFun = [this] (GlobalNamespace::LevelSelectionNavigationController*) {
+            INFO("LevelSelectionNavigationController PressActionButtonEvent");
+            if (!this->IsSelectedCustomLevel())
+                return;
+            if (!this->recordListButton || this->recordListButton->GetIsFirstState())
+                return;
+
+            this->recordPackIdx = this->FindPackIdx(this->recordPackName, this->recordPackIdx);
+            if (this->recordPackIdx < 0) {
+                ERROR("Can't find index of record list %s", this->recordPackName.c_str());
+                this->recordPackName = "";
+                this->recordListButton->SetIsFirstState(true);
+                Toast::GetInstance()->ShowMessage("Stop record playing level to new list");
+                return;
+            }
+
+            const std::string recordPackId = CustomLevelPackPrefixID + this->recordPackName;
+            if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_INSERT, this->recordPackIdx, recordPackId)) {
+                this->InsertSelectedSongToPack(this->recordPackIdx);
+                Toast::GetInstance()->ShowMessage("Insert song to record list");
+            }
+        };
+        this->LevelSelectionNavigationController->add_didPressActionButtonEvent(
+            Utils::MakeDelegate<System::Action_1<GlobalNamespace::LevelSelectionNavigationController*>*>(didPressActionButtonEventFun));
     }
 }
 
@@ -399,6 +426,40 @@ void PlaylistEditor::CreateListActionButton()
                                             Toast::GetInstance()->ShowMessage("Set cover image");
                                         }
                                     }, FileToSprite("AddImageIcon"), "Set Cover Image with Selected Level Image");
+
+    if (!this->recordListButton)
+        this->recordListButton = new TwoStateIconButton("RecordListButton", screenContainer, "PracticeButton",
+                                                           UnityEngine::Vector2(80.0f, 27.0f), UnityEngine::Vector2(10.0f, 7.0f),
+                                    [this] () {
+                                        if (!this->recordListInput) {
+                                            auto screenContainer = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([] (auto x) {
+                                                return x->get_name()->Equals("ScreenContainer");
+                                            });
+                                            this->recordListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
+                                                                                    UnityEngine::Vector2(66.0f, -17.0f), 50.0f, [this] (StringW value) {
+                                                INFO("Enter %s", std::string(value).c_str());
+                                                if (!CreateList(value))
+                                                    return;
+
+                                                Toast::GetInstance()->ShowMessage("Create new list and start record");
+                                                this->recordPackIdx = 0;
+                                                this->recordPackName = std::string(value);
+                                                this->recordListInput->get_gameObject()->set_active(false);
+                                                this->recordListInput->SetText("");
+                                                this->recordListButton->SetIsFirstState(false);
+                                            });
+                                            this->recordListInput->get_gameObject()->set_active(true);
+                                            return;
+                                        }
+                                        this->recordListInput->get_gameObject()->set_active(!this->recordListInput->get_gameObject()->get_active());
+                                    }, FileToSprite("StartRecordIcon"), "Start Record Playing Level to New List",
+                                    [this] () {
+                                        recordPackIdx = -1;
+                                        recordPackName = "";
+                                        this->recordListButton->SetIsFirstState(true);
+                                        Toast::GetInstance()->ShowMessage("Stop record playing level to new list");
+                                    }, FileToSprite("StopRecordIcon"), "Stop Record Playing Level to New List",
+                                    false);
 }
 
 void PlaylistEditor::ResetUI()
@@ -424,6 +485,10 @@ void PlaylistEditor::ResetUI()
     }
     if (this->imageListButton)
         this->imageListButton->ResetUI();
+    if (this->recordListButton)
+        this->recordListButton->ResetUI();
+    if (this->recordListInput)
+        this->recordListInput->get_gameObject()->set_active(false);
 }
 
 void PlaylistEditor::MoveUpSelectedSong() {
@@ -807,6 +872,19 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
         if (!atCustomPack || (isDefaultCover && atCustomPack && !atCustomLevel)) // || at pack header
             this->imageListButton->SetInteractable(false);
         this->imageListButton->SetIsFirstState(!isDefaultCover);
+    }
+    if (this->recordListButton) {
+        this->recordListButton->SetActive(!forceDisable && (atCustomCategory || atCustomLevel));
+        if (!this->recordListButton->GetIsFirstState()) {
+            this->recordPackIdx = this->FindPackIdx(this->recordPackName, this->recordPackIdx);
+            if (this->recordPackIdx < 0) {
+                ERROR("Can't find index of record list %s", this->recordPackName.c_str());
+                this->recordPackName = "";
+                this->recordListButton->SetIsFirstState(true);
+                Toast::GetInstance()->ShowMessage("Stop record playing level to new list");
+                return;
+            }
+        }
     }
 }
 

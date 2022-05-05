@@ -58,6 +58,14 @@
 	  {
 		"name": "DeleteImageIcon.png",
 		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/DeleteImageIcon.png"
+	  },
+	  {
+		"name": "StartRecordIcon.png",
+		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/StartRecordIcon.png"
+	  },
+	  {
+		"name": "StopRecordIcon.png",
+		"destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/playlisteditor/Icons/StopRecordIcon.png"
 	  }
 	]
 }

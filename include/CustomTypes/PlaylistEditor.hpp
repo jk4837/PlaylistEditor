@@ -10,6 +10,7 @@
 #include "GlobalNamespace/LevelCollectionTableView.hpp"
 #include "GlobalNamespace/LevelFilteringNavigationController.hpp"
 #include "GlobalNamespace/LevelSearchViewController.hpp"
+#include "GlobalNamespace/LevelSelectionNavigationController.hpp"
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
 #include "HMUI/FlowCoordinator.hpp"
 #include "HMUI/ModalView.hpp"
@@ -85,6 +86,7 @@ private:
     GlobalNamespace::LevelCollectionTableView *LevelCollectionTableView = nullptr;
     GlobalNamespace::LevelFilteringNavigationController *LevelFilteringNavigationController = nullptr;
     GlobalNamespace::LevelSearchViewController *LevelSearchViewController = nullptr;
+    GlobalNamespace::LevelSelectionNavigationController *LevelSelectionNavigationController = nullptr;
     GlobalNamespace::SelectLevelCategoryViewController *LevelCategoryViewController = nullptr;
     GlobalNamespace::StandardLevelDetailView *StandardLevelDetailView = nullptr;
 
@@ -98,7 +100,9 @@ private:
     IconButton *removeButton = nullptr;
     TwoStateIconButton *lockButton = nullptr;
     TwoStateIconButton *imageListButton = nullptr;
+    TwoStateIconButton *recordListButton = nullptr;
     HMUI::InputFieldView *createListInput = nullptr;
+    HMUI::InputFieldView *recordListInput = nullptr;
     ListModal *listModal;
 
     int lastInsertPackIdx = -1;
@@ -108,6 +112,9 @@ private:
     int skipSelectLockTimes = 0;
     int selectedLockDiff = 0;
     std::string selectedLockCharStr = "";
+
+    int recordPackIdx = -1;
+    std::string recordPackName = "";
 };
 
 }
