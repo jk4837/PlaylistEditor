@@ -219,6 +219,23 @@ int PlaylistEditor::GetSelectedDiff()
            int(this->StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController()->get_selectedDifficulty()) : 0;
 }
 
+int PlaylistEditor::FindPackIdx(const std::string &name, const int startIdx)
+{
+    int foundIdx = -1;
+    if (name.empty())
+        return foundIdx;
+
+    auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+    for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
+        if (name != annotatedBeatmapLevelCollections[i]->get_collectionName())
+            continue;
+        foundIdx = i;
+        if (i >= startIdx)
+            break;
+    }
+    return foundIdx;
+}
+
 void PlaylistEditor::SelectLockCharDiff()
 {
     if (!this->IsSelectedCustomPack() ||
@@ -694,7 +711,6 @@ void PlaylistEditor::CreateSongActionButton() {
                 });
             }
 
-            int initSelectIdx = 0;
             std::vector<std::string> listItem;
             auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
             for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
@@ -702,10 +718,11 @@ void PlaylistEditor::CreateSongActionButton() {
                 if (CustomLevelName == selectedPackName)
                     continue;
                 listItem.push_back(selectedPackName);
-                if (i >= this->lastInsertPackIdx && this->lastInsertPackName == selectedPackName)
-                    initSelectIdx = i;
             }
-            this->listModal->SetListItem(listItem, initSelectIdx - 1);
+
+            this->lastInsertPackIdx = this->FindPackIdx(this->lastInsertPackName, this->lastInsertPackIdx);
+
+            this->listModal->SetListItem(listItem, (this->lastInsertPackIdx > 0) ? this->lastInsertPackIdx - 1 : 0);
             this->listModal->SetActive(true);
         }, FileToSprite("InsertIcon"), "Insert to List");
     this->insertButton->SetActive(false);

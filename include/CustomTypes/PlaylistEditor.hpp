@@ -55,6 +55,7 @@ private:
     int GetSelectedPackIdx();
     std::string GetSelectedCharStr();
     int GetSelectedDiff();
+    int FindPackIdx(const std::string &name, const int startIdx = 0);
 
     bool UpdateFileWithSelected(const FILE_ACTION act);
     bool UpdateFileWithSelected(const FILE_ACTION act, const int selectedPackIdx, const std::string &selectedPackId); // for insert action
