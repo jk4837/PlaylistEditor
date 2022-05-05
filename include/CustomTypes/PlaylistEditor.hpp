@@ -67,6 +67,7 @@ private:
     void RemoveSelectedSongInAllPack(const bool includeCustomLevel);
     void RemoveSongsInFilterList(const StringW &levelID);
     void SetSelectedCoverImage(const int collectionIdx, UnityEngine::Sprite *image = nullptr);
+    bool CreateList(const std::string &name);
 
     void AcquiredObject();
     void RegistEvent();

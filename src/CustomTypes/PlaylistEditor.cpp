@@ -303,6 +303,26 @@ void PlaylistEditor::SetSelectedCoverImage(const int collectionIdx, UnityEngine:
         this->LevelCollectionNavigationController->dyn__levelPackDetailViewController()->dyn__packImage()->set_sprite(image);
 }
 
+bool PlaylistEditor::CreateList(const std::string &name)
+{
+    // validate
+    auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+    for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
+        std::string selectedPackName = annotatedBeatmapLevelCollections[i]->get_collectionName();
+        if (name != selectedPackName)
+            continue;
+        Toast::GetInstance()->ShowMessage("List already exist");
+        return false;
+    }
+
+    if (!this->fileUtils.CreateFile(name))
+        return false;
+
+    this->fileUtils.ReloadPlaylistPath();
+    this->RefreshAndStayList(REFESH_TYPE::PACK_INSERT);
+    return true;
+}
+
 void PlaylistEditor::CreateListActionButton()
 {
     if (!this->init)
@@ -317,24 +337,14 @@ void PlaylistEditor::CreateListActionButton()
                 this->createListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
                                                           UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [this] (StringW value) {
                                             INFO("Enter %s", std::string(value).c_str());
-                                            // validate
-                                            auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
-                                            for (int i = 0; i < annotatedBeatmapLevelCollections.Length(); i++) {
-                                                std::string selectedPackName = annotatedBeatmapLevelCollections[i]->get_collectionName();
-                                                if (value != selectedPackName)
-                                                    continue;
-                                                Toast::GetInstance()->ShowMessage("List already exist");
+                                            if (!CreateList(value))
                                                 return;
-                                            }
-                                            if (this->fileUtils.CreateFile(value)) {
-                                                this->fileUtils.ReloadPlaylistPath();
-                                                this->RefreshAndStayList(REFESH_TYPE::PACK_INSERT);
-                                                Toast::GetInstance()->ShowMessage("Create new list");
-                                                this->createListInput->SetText("");
-                                                this->lastInsertPackIdx = 0;
-                                                this->lastInsertPackName = std::string(value);
-                                            }
+
+                                            Toast::GetInstance()->ShowMessage("Create new list");
+                                            this->lastInsertPackIdx = 0;
+                                            this->lastInsertPackName = std::string(value);
                                             this->createListInput->get_gameObject()->set_active(false);
+                                            this->createListInput->SetText("");
                 });
                 this->createListInput->get_gameObject()->set_active(true);
                 return;
