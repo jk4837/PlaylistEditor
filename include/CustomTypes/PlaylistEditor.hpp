@@ -40,6 +40,7 @@ public:
     void SelectLockCharDiff();
     void AdjustUI(const bool forceDisable = false);   // use forceDisable, cause don't know how to decide if now at main menu
 
+    bool isLevelDetailReady = false;
     System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::IDifficultyBeatmap*>* difficultyBeatmaps = nullptr;
     System::Collections::Generic::IReadOnlyList_1<::GlobalNamespace::IDifficultyBeatmapSet*>* difficultyBeatmapSets = nullptr;
 private:
@@ -111,7 +112,6 @@ private:
     std::string lastInsertPackName = "";
     FileUtils fileUtils;
 
-    int skipSelectLockTimes = 0;
     int selectedLockDiff = 0;
     std::string selectedLockCharStr = "";
 

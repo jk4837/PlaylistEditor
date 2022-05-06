@@ -56,8 +56,10 @@ MAKE_HOOK_MATCH(StandardLevelDetailViewController_ShowContent, &GlobalNamespace:
 {
     // when select new level
     StandardLevelDetailViewController_ShowContent(self, contentType, errorText, downloadingProgress, downloadingText);
+    playlistEditor->isLevelDetailReady = (contentType == GlobalNamespace::StandardLevelDetailViewController::ContentType::OwnedAndReady);
     playlistEditor->CreateSongActionButton();
-    playlistEditor->SelectLockCharDiff();
+    if (playlistEditor->isLevelDetailReady)
+        playlistEditor->SelectLockCharDiff();
     playlistEditor->AdjustUI();
 }
 

@@ -291,11 +291,6 @@ void PlaylistEditor::SelectLockCharDiff()
         !this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController()->get_selectedBeatmapCharacteristic())
         return;
 
-    if (this->skipSelectLockTimes > 0) {
-        INFO("skip %d", skipSelectLockTimes);
-        this->skipSelectLockTimes--;
-        return;
-    }
     const std::string path = this->fileUtils.GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID());
     if (!fileUtils.FindSongCharDiff(this->GetSelectedCustomLevelIdx(), this->GetSelectedCustomPreviewBeatmapLevel()->get_levelID(), path,
                                      this->selectedLockCharStr, this->selectedLockDiff))
@@ -974,8 +969,6 @@ void PlaylistEditor::RefreshAndStayList(const REFESH_TYPE act)
         } else if (SONG_STAY == act) {
         }
     }
-    if (this->IsSelectedCustomPack() && this->IsSelectedCustomLevel() && SONG_REMOVE_STAY != act && PACK_DELETE != act)
-        this->skipSelectLockTimes += 2; // always trigger StandardLevelDetailViewController_ShowContent twice
 
     INFO("select level %d %f %f", nextSelectedRow, lastScrollPos, nextScrollPos);
     // this->LevelCollectionTableView->SelectLevel(nextPreviewBeatmapLevels); // this will jump to center
