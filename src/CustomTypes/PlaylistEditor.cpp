@@ -395,13 +395,13 @@ void PlaylistEditor::CreateListActionButton()
         return;
     if (!this->createListButton)
         this->createListButton = new IconButton("CreateListButton", this->LevelFilteringNavigationController->get_transform(), "PracticeButton",
-                                                UnityEngine::Vector2(69.0f, -3.0f), UnityEngine::Vector2(10.0f, 7.0f), [this] () {
+                                                UnityEngine::Vector2(75.0f, -3.0f), UnityEngine::Vector2(7.0f, 7.0f), [this] () {
             if (!this->createListInput) {
                 auto screenContainer = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([] (auto x) {
                     return x->get_name()->Equals("ScreenContainer");
                 });
                 this->createListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
-                                                          UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [this] (StringW value) {
+                                                          UnityEngine::Vector2(63.0f, -17.0f), 50.0f, [this] (StringW value) {
                                             INFO("Enter %s", std::string(value).c_str());
                                             if (!CreateList(value))
                                                 return;
@@ -420,7 +420,7 @@ void PlaylistEditor::CreateListActionButton()
 
     if (!this->deleteListButton)
         this->deleteListButton = new DoubleClickIconButton("DeleteListButton", this->LevelFilteringNavigationController->get_transform(), "PracticeButton",
-                                                           UnityEngine::Vector2(69.0f, 3.0f), UnityEngine::Vector2(10.0f, 7.0f), [this] () {
+                                                           UnityEngine::Vector2(75.0f, 3.0f), UnityEngine::Vector2(7.0f, 7.0f), [this] () {
                                     if (this->fileUtils.DeleteFile(this->fileUtils.GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()))) {
                                         this->fileUtils.ReloadPlaylistPath();
                                         Toast::GetInstance()->ShowMessage("Delete selected list");
@@ -428,14 +428,9 @@ void PlaylistEditor::CreateListActionButton()
                                     }
         }, FileToSprite("DeleteIcon"), "Delete List");
 
-    // button exceed region of LevelFilteringNavigationController, so using ScreenContainer to be parent
-    auto screenContainer = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([](auto x) {
-        return x->get_name()->Equals("ScreenContainer");
-    });
-
     if (!this->imageListButton)
-        this->imageListButton = new TwoStateIconButton("ImageListButton", screenContainer, "PracticeButton",
-                                                           UnityEngine::Vector2(80.0f, 33.0f), UnityEngine::Vector2(10.0f, 7.0f),
+        this->imageListButton = new TwoStateIconButton("ImageListButton", this->LevelFilteringNavigationController->get_transform(), "PracticeButton",
+                                                           UnityEngine::Vector2(67.0f, 3.0f), UnityEngine::Vector2(7.0f, 7.0f),
                                     [this] () {
                                         if (this->fileUtils.SetCoverImage(this->fileUtils.GetPlaylistPath(this->GetSelectedPackIdx(), this->GetSelectedPackID()))) {
                                             this->SetSelectedCoverImage(this->GetSelectedPackIdx());
@@ -450,15 +445,15 @@ void PlaylistEditor::CreateListActionButton()
                                     }, FileToSprite("AddImageIcon"), "Set Cover Image with Selected Level Image");
 
     if (!this->recordListButton)
-        this->recordListButton = new TwoStateIconButton("RecordListButton", screenContainer, "PracticeButton",
-                                                           UnityEngine::Vector2(80.0f, 27.0f), UnityEngine::Vector2(10.0f, 7.0f),
+        this->recordListButton = new TwoStateIconButton("RecordListButton", this->LevelFilteringNavigationController->get_transform(), "PracticeButton",
+                                                           UnityEngine::Vector2(67.0f, -3.0f), UnityEngine::Vector2(7.0f, 7.0f),
                                     [this] () {
                                         if (!this->recordListInput) {
                                             auto screenContainer = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([] (auto x) {
                                                 return x->get_name()->Equals("ScreenContainer");
                                             });
                                             this->recordListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
-                                                                                    UnityEngine::Vector2(66.0f, -17.0f), 50.0f, [this] (StringW value) {
+                                                                                    UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [this] (StringW value) {
                                                 INFO("Enter %s", std::string(value).c_str());
                                                 if (!CreateList(value))
                                                     return;
@@ -839,12 +834,8 @@ void PlaylistEditor::CreateSongActionButton() {
         }, FileToSprite("InsertIcon"), "Insert to List");
     this->insertButton->SetActive(false);
 
-    posX += 10.0f + 1.25f;
-    auto screenContainer = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([](auto x) {
-        return x->get_name()->Equals("ScreenContainer");
-    });
-    this->lockButton = new TwoStateIconButton("LockButton", screenContainer->get_transform(), "PracticeButton",
-                                              UnityEngine::Vector2(posX + 39.25f, -14.75f), UnityEngine::Vector2(9.0f,15.0f),
+    this->lockButton = new TwoStateIconButton("LockButton", this->LevelCollectionNavigationController->get_transform(), "PracticeButton",
+                                              UnityEngine::Vector2(4.0f, -5.5f), UnityEngine::Vector2(7.0f,14.5f),
         [&] () {
             INFO("Lock char %s, diff %d",
                 std::string(this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController()->get_selectedBeatmapCharacteristic()->get_serializedName()).c_str(),
@@ -863,6 +854,7 @@ void PlaylistEditor::CreateSongActionButton() {
             }
         }, FileToSprite("LockIcon"), "UnLock Selected Char and Diff");
     this->lockButton->SetActive(false);
+    this->lockButton->SetButtonBackgroundActive(false);
 }
 
 void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casue don't know how to decide if now at main menu
@@ -899,7 +891,7 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
             this->moveDownButton->SetInteractable(false);
     }
     if (this->lockButton) {
-        this->lockButton->SetActive(!forceDisable && atCustomPack && atCustomLevel); // not at pack header
+        this->lockButton->SetActive(!forceDisable && atCustomPack && atCustomLevel && this->isLevelDetailReady); // not at pack header
         if (!forceDisable && atCustomPack && atCustomLevel)
             this->lockButton->SetIsFirstState(
                 this->selectedLockCharStr != this->GetSelectedCharStr() ||

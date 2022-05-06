@@ -32,6 +32,13 @@ void IconButton::SetInteractable(const bool interactable)
         this->imageView_->set_color(UnityEngine::Color::get_gray());
 }
 
+void IconButton::SetButtonBackgroundActive(const bool active)
+{
+    auto background = btn_->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([] (auto x) -> bool { return "BG" == x->get_name(); });
+    if (background)
+        background->get_gameObject()->SetActive(active);
+}
+
 void IconButton::SetActive(const bool active)
 {
     btn_->get_gameObject()->set_active(active);
