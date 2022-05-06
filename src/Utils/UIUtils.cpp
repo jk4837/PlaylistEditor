@@ -58,7 +58,7 @@ UnityEngine::UI::Button *CreateIconButton(const std::string_view &name, UnityEng
     UnityEngine::UI::Image *iconImage = UnityEngine::GameObject::New_ctor("Icon")->AddComponent<HMUI::ImageView*>();
     if (templateMaterial)
         iconImage->set_material(templateMaterial);
-    iconImage->get_rectTransform()->SetParent(contentTransform, false);
+    iconImage->get_rectTransform()->SetParent(btn->get_transform(), false);
     iconImage->get_rectTransform()->set_sizeDelta(UnityEngine::Vector2(10.0f, 10.0f));
     iconImage->set_sprite(icon);
     iconImage->set_preserveAspect(true);
