@@ -1,5 +1,7 @@
 #include "Utils/UIUtils.hpp"
 
+#include <fstream>
+
 #include "CustomTypes/DoubleClickIconButton.hpp"
 #include "Utils/Utils.hpp"
 
@@ -22,6 +24,11 @@ namespace PlaylistEditor::Utils
 UnityEngine::Sprite *FileToSprite(const std::string_view &image_name)
 {
     std::string path = string_format(IconPathTemplate.c_str(), image_name.data());
+
+    if (!std::filesystem::is_regular_file(path)) {
+        ERROR("Failed to load sprite from file %s", path.c_str());
+        return UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Sprite*>().First();
+    }
     return QuestUI::BeatSaberUI::FileToSprite(path);
 }
 
