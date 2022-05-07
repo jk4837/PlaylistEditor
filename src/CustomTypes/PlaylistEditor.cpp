@@ -612,8 +612,11 @@ void PlaylistEditor::CreateSongActionButton() {
                     if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_REMOVE)) {
                         Toast::GetInstance()->ShowMessage(this->IsSelectedCustomPack() ? "Delete song and remove from the list" : "Delete song and remove from all list" );
                         this->RemoveSelectedSongInAllPack(true);
-                    } else
+                    } else {
+                        // song isn't in any list
+                        this->RemoveSelectedSongInPack();
                         Toast::GetInstance()->ShowMessage("Delete song");
+                    }
                     this->RefreshAndStayList(REFESH_TYPE::SONG_REMOVE_STAY);
                 }
             );
