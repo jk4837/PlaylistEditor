@@ -26,6 +26,7 @@
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "songloader/shared/API.hpp"
+#include "questui/shared/BeatSaberUI.hpp"
 
 #include "CustomTypes/Toast.hpp"
 #include "CustomTypes/Logging.hpp"
@@ -244,6 +245,26 @@ int PlaylistEditor::GetSelectedDiff()
     return (this->StandardLevelDetailView &&
            this->StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController()) ?
            int(this->StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController()->get_selectedDifficulty()) : 0;
+}
+
+std::string PlaylistEditor::GetSelectedPackDuration()
+{
+    float sum = 0;
+
+    if (!this->LevelCollectionTableView || !this->LevelCollectionTableView->dyn__previewBeatmapLevels())
+        return "0";
+
+    auto beatmapLevels = listToArrayW(this->LevelCollectionTableView->dyn__previewBeatmapLevels());
+    for (size_t i = 0; i < beatmapLevels.Length(); i++)
+    {
+        sum += beatmapLevels[i]->get_songDuration();
+    }
+
+    //  HH:MM:SS
+    const int s = (int)sum % 60;
+    const int m = (int)sum/60 % 60;
+    const int h = (int)sum/60/60 % 60;
+    return std::to_string(h) + ":" + (m < 10 ? "0" : "") + std::to_string(m) + ":" + (s < 10 ? "0" : "") + std::to_string(s);
 }
 
 int PlaylistEditor::FindPackIdx(const std::string &name, const int startIdx)
@@ -489,6 +510,8 @@ void PlaylistEditor::ResetUI()
         this->recordListButton->ResetUI();
     if (this->recordListInput)
         this->recordListInput->get_gameObject()->set_active(false);
+    if (this->packDurationText)
+        this->packDurationText->get_gameObject()->set_active(false);
 }
 
 void PlaylistEditor::MoveUpSelectedSong() {
@@ -662,6 +685,24 @@ void PlaylistEditor::InsertSelectedSongToPack(const int collectionIdx) {
     if (annotatedBeatmapLevelCollections[0]->get_coverImage() != annotatedBeatmapLevelCollections[collectionIdx]->get_coverImage())
         return;
     this->SetSelectedCoverImage(collectionIdx, this->GetSelectedCustomPreviewBeatmapLevel()->dyn__coverImage());
+}
+
+void PlaylistEditor::CreatePackHeaderDetail() {
+    if (!this->init)
+        return;
+    if (this->packDurationText)
+        return;
+    if (!this->LevelCollectionNavigationController->dyn__levelPackDetailViewController() ||
+        !this->LevelCollectionNavigationController->dyn__levelPackDetailViewController()->dyn__packImage())
+        return;
+
+    this->packDurationText = QuestUI::BeatSaberUI::CreateText(
+                                this->LevelCollectionNavigationController->dyn__levelPackDetailViewController()->dyn__packImage()->get_transform(),
+                                "text", {36, -23}, {20, 30});
+    this->packDurationText->set_fontStyle(TMPro::FontStyles::Bold);
+    this->packDurationText->set_alignment(TMPro::TextAlignmentOptions::Center);
+    this->packDurationText->set_overflowMode(TMPro::TextOverflowModes::Ellipsis);
+    this->packDurationText->get_gameObject()->SetActive(false);
 }
 
 void PlaylistEditor::CreateSongActionButton() {
@@ -885,6 +926,10 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
                 return;
             }
         }
+    }
+    if (this->packDurationText && (atCustomPack && !atCustomLevel)) { // at custom pack header
+        this->packDurationText->set_text("Duration\n" + this->GetSelectedPackDuration());
+        this->packDurationText->get_gameObject()->set_active(true);
     }
 }
 

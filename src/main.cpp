@@ -37,6 +37,7 @@ MAKE_HOOK_MATCH(FlowCoordinator_PresentFlowCoordinator, &HMUI::FlowCoordinator::
     FlowCoordinator_PresentFlowCoordinator(self, flowCoordinator, finishedCallback, animationDirection, immediately, replaceTopViewController);
     playlistEditor->Init(flowCoordinator);
     playlistEditor->CreateListActionButton();
+    playlistEditor->CreatePackHeaderDetail();
     playlistEditor->AdjustUI();
 }
 

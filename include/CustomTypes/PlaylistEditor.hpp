@@ -36,6 +36,7 @@ public:
     void Init(HMUI::FlowCoordinator *flowCoordinator);
     void CreateListActionButton();
     void CreateSongActionButton();
+    void CreatePackHeaderDetail();
     void SelectLockCharDiff();
     void AdjustUI(const bool forceDisable = false);   // use forceDisable, cause don't know how to decide if now at main menu
 
@@ -56,6 +57,7 @@ private:
     int GetSelectedPackIdx();
     std::string GetSelectedCharStr();
     int GetSelectedDiff();
+    std::string GetSelectedPackDuration();
     int FindPackIdx(const std::string &name, const int startIdx = 0);
 
     bool UpdateFileWithSelected(const FILE_ACTION act);
@@ -115,6 +117,8 @@ private:
 
     int recordPackIdx = -1;
     std::string recordPackName = "";
+
+    TMPro::TextMeshProUGUI *packDurationText = nullptr;
 };
 
 }
