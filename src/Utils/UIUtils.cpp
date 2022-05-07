@@ -109,9 +109,7 @@ static HMUI::ModalView *CreateRestoreDialog(UnityEngine::Transform *parent, cons
 {
     const int width = 65;
     const int height = 33+8.5;
-    auto restoreDialogPromptModal = QuestUI::BeatSaberUI::CreateModal(parent, UnityEngine::Vector2(width, height), [onCancel] (HMUI::ModalView*) {
-        onCancel();
-    });
+    auto restoreDialogPromptModal = QuestUI::BeatSaberUI::CreateModal(parent, UnityEngine::Vector2(width, height), nullptr, false);
 
     auto restoreButton = QuestUI::BeatSaberUI::CreateUIButton(restoreDialogPromptModal->get_transform(), "Restore", "ActionButton",
                                                               UnityEngine::Vector2(-width/4, -height/2 + 5.5), [restoreDialogPromptModal, onOK] {
