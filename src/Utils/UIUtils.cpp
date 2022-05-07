@@ -93,7 +93,7 @@ HMUI::InputFieldView *CreateStringInput(UnityEngine::Transform *parent, const St
         if (onEnter)
             onEnter(fieldView->get_text());
     };
-    auto clearButton = fieldView->get_gameObject()->Find("ClearButton")->GetComponent<UnityEngine::UI::Button*>();
+    auto &clearButton = fieldView->dyn__clearSearchButton();
     clearButton->set_onClick(UnityEngine::UI::Button::ButtonClickedEvent::New_ctor());
     clearButton->get_onClick()->AddListener(MakeDelegate<UnityEngine::Events::UnityAction*>(enterFunction));
     QuestUI::BeatSaberUI::SetButtonIcon(clearButton, FileToSprite("EnterIcon"));
