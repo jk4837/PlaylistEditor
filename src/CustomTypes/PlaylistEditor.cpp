@@ -478,6 +478,8 @@ void PlaylistEditor::CreateListActionButton()
                                         recordPackIdx = -1;
                                         recordPackName = "";
                                         this->recordListButton->SetIsFirstState(true);
+                                        if(!this->IsSelectedCustomCategory())
+                                            this->recordListButton->SetActive(false);
                                         Toast::GetInstance()->ShowMessage("Stop record playing level to new list");
                                     }, FileToSprite("StopRecordIcon"), "Stop Record Playing Level to New List",
                                     false);
@@ -915,7 +917,8 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
         this->imageListButton->SetIsFirstState(!isDefaultCover);
     }
     if (this->recordListButton) {
-        this->recordListButton->SetActive(!forceDisable && (atCustomCategory || atCustomLevel));
+        this->recordListButton->SetActive(!forceDisable && (atCustomCategory ||
+                                                           (!atCustomCategory && atCustomLevel && !this->recordListButton->GetIsFirstState())));
         if (!this->recordListButton->GetIsFirstState()) {
             this->recordPackIdx = this->FindPackIdx(this->recordPackName, this->recordPackIdx);
             if (this->recordPackIdx < 0) {
