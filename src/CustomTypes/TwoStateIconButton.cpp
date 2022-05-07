@@ -3,7 +3,9 @@
 #include "Utils/Utils.hpp"
 
 #include "UnityEngine/Events/UnityAction.hpp"
+#include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/UI/Button_ButtonClickedEvent.hpp"
+#include "UnityEngine/UI/Image.hpp"
 
 namespace PlaylistEditor
 {
@@ -27,6 +29,17 @@ TwoStateIconButton::TwoStateIconButton(const std::string_view &name, UnityEngine
     };
 
     this->btn_->get_onClick()->AddListener(PlaylistEditor::Utils::MakeDelegate<UnityEngine::Events::UnityAction*>(onClick));
+
+    // avoiding icon to be free after song played
+    cacheObject1 = UnityEngine::GameObject::New_ctor(name);
+    cacheObject1->AddComponent<UnityEngine::UI::Image*>()->set_sprite(icon1);
+    cacheObject1->get_transform()->set_parent(this->btn_->get_transform());
+    cacheObject1->SetActive(false);
+
+    cacheObject2 = UnityEngine::GameObject::New_ctor(name);
+    cacheObject2->AddComponent<UnityEngine::UI::Image*>()->set_sprite(icon2);
+    cacheObject2->get_transform()->set_parent(this->btn_->get_transform());
+    cacheObject2->SetActive(false);
 }
 
 void TwoStateIconButton::SetIsFirstState(const bool isFirstState)

@@ -31,6 +31,8 @@ private:
     std::string hint2_;
     UnityEngine::Sprite *icon1_ = nullptr;
     UnityEngine::Sprite *icon2_ = nullptr;
+    UnityEngine::GameObject *cacheObject1 = nullptr;
+    UnityEngine::GameObject *cacheObject2 = nullptr;
 };
 
 }
