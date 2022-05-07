@@ -20,6 +20,7 @@ public:
               const std::function<void(const int itemIdx, const std::string &itemName)> &onItemClick)
               : parent_(parent), anchoredPosition_(anchoredPosition), sizeDelta_(sizeDelta), onItemClick_(onItemClick) {}
     void SetListItem(const std::vector<std::string> &list, const int initSelectIdx = 0);
+    void SetMaterial(UnityEngine::Material *material) { material_ = material; }
     bool GetActive();
     void SetActive(const bool active);
 
@@ -37,6 +38,7 @@ private:
     std::vector<QuestUI::ClickableText *> listModalItem_;
     int initSelectIdx_ = -1;
     UnityEngine::Coroutine *routine_ = nullptr;
+    UnityEngine::Material *material_ = nullptr;
 };
 
 }

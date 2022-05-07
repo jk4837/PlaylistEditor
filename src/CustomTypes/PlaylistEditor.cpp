@@ -25,6 +25,7 @@
 #include "System/Action.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Transform.hpp"
+#include "UnityEngine/Material.hpp"
 #include "songloader/shared/API.hpp"
 #include "questui/shared/BeatSaberUI.hpp"
 
@@ -817,6 +818,9 @@ void PlaylistEditor::CreateSongActionButton() {
                         Toast::GetInstance()->ShowMessage("Insert song to selected list");
                     }
                 });
+
+                auto practiceMaterial = this->StandardLevelDetailView->get_practiceButton()->GetComponentsInChildren<TMPro::TextMeshProUGUI*>().First()->get_materialForRendering();
+                this->listModal->SetMaterial(practiceMaterial);
             }
 
             std::vector<std::string> listItem;
