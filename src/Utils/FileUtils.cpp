@@ -214,8 +214,7 @@ void FileUtils::AppendPlaylistData() { // for appending extra data that may dele
     if(std::filesystem::is_directory(Utils::ModPackPath)) {
         std::filesystem::remove_all(Utils::ModPackTmpPath);
         std::filesystem::rename(Utils::ModPackPath, Utils::ModPackTmpPath);
-    } else
-        std::filesystem::create_directory(Utils::ModPackTmpPath);
+    }
 
     std::filesystem::create_directory(Utils::ModPackPath);
 
@@ -250,7 +249,7 @@ void FileUtils::AppendPlaylistData() { // for appending extra data that may dele
         playlistFilename.push_back(filename);
     }
 
-    if (!askUserRestore) {
+    if (!askUserRestore && std::filesystem::is_directory(Utils::ModPackTmpPath)) {
         // see if any old playlist being deleted or created
         std::vector<std::string> playlistBkpFilename;
         for (const auto &entry : std::filesystem::directory_iterator(Utils::ModPackTmpPath)) {
