@@ -820,6 +820,7 @@ void PlaylistEditor::CreateSongActionButton() {
                 if (CustomLevelName == selectedPackName)
                     continue;
                 listItem.push_back(selectedPackName);
+                DEBUG("#%d add %s to insert list", i, std::string(selectedPackName).c_str()); // print this log to fix the insert list not showing bug
             }
 
             this->lastInsertPackIdx = this->FindPackIdx(this->lastInsertPackName, this->lastInsertPackIdx);
