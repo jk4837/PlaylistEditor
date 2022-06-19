@@ -25,6 +25,8 @@
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/Material.hpp"
+#include "UnityEngine/Rect.hpp"
+#include "UnityEngine/RectTransform_Axis.hpp"
 #include "songloader/shared/API.hpp"
 #include "questui/shared/BeatSaberUI.hpp"
 
@@ -372,10 +374,22 @@ bool PlaylistEditor::CreateList(const std::string &name)
     return true;
 }
 
+void PlaylistEditor::AdjustPackTableViewWidth() {
+    auto tableView = this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollectionsTableView()->dyn__tableView();
+
+    if (tableView->dyn__viewportTransform()->get_rect().get_width() > 78.0f) {
+        tableView->ChangeRectSize(UnityEngine::RectTransform::Axis::_get_Horizontal(), 78.0f);
+        tableView->get_transform()->Translate(-0.40f, 0, 0);
+    }
+}
+
 void PlaylistEditor::CreateListActionButton()
 {
     if (!this->init)
         return;
+
+    this->AdjustPackTableViewWidth();
+
     if (!this->createListButton)
         this->createListButton = new IconButton("CreateListButton", this->LevelFilteringNavigationController->get_transform(), "PracticeButton",
                                                 UnityEngine::Vector2(75.0f, -3.0f), UnityEngine::Vector2(7.0f, 7.0f), [this] () {
@@ -384,7 +398,7 @@ void PlaylistEditor::CreateListActionButton()
                     return x->get_name()->Equals(il2cpp_utils::newcsstr("ScreenContainer"));
                 });
                 this->createListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
-                                                          UnityEngine::Vector2(63.0f, -17.0f), 50.0f, [this] (StringW value) {
+                                                          UnityEngine::Vector2(63.0f, -15.0f), 50.0f, [this] (StringW value) {
                                             INFO("Enter %s", std::string(value).c_str());
                                             if (!CreateList(value))
                                                 return;
@@ -436,7 +450,7 @@ void PlaylistEditor::CreateListActionButton()
                                                 return x->get_name()->Equals(il2cpp_utils::newcsstr("ScreenContainer"));
                                             });
                                             this->recordListInput = CreateStringInput(screenContainer->get_transform(), "Ente new playlist name", "",
-                                                                                    UnityEngine::Vector2(55.0f, -17.0f), 50.0f, [this] (StringW value) {
+                                                                                    UnityEngine::Vector2(55.0f, -15.0f), 50.0f, [this] (StringW value) {
                                                 INFO("Enter %s", std::string(value).c_str());
                                                 if (!CreateList(value))
                                                     return;
@@ -678,8 +692,8 @@ void PlaylistEditor::CreatePackHeaderDetail() {
         return;
 
     this->packDurationText = QuestUI::BeatSaberUI::CreateText(
-                                this->LevelCollectionNavigationController->dyn__levelPackDetailViewController()->dyn__packImage()->get_transform(),
-                                "text", {36, -23}, {20, 30});
+                                this->LevelCollectionNavigationController->dyn__levelPackDetailViewController()->get_transform(),
+                                "text", {28, -23}, {20, 30});
     this->packDurationText->set_fontStyle(TMPro::FontStyles::Bold);
     this->packDurationText->set_alignment(TMPro::TextAlignmentOptions::Center);
     this->packDurationText->set_overflowMode(TMPro::TextOverflowModes::Ellipsis);
@@ -709,8 +723,9 @@ void PlaylistEditor::CreateSongActionButton() {
 
     // create new button
     auto posX = -22.5f;
+    auto posY = -0.5f;
     this->deleteAndRemoveButton = new DoubleClickIconButton("DeleteAndRemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
-                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(20.0f,7.0f), [this] () {
+                                            UnityEngine::Vector2(posX, posY - 15.0f), UnityEngine::Vector2(20.0f,7.0f), [this] () {
             GlobalNamespace::CustomPreviewBeatmapLevel *selectedlevel = reinterpret_cast<GlobalNamespace::CustomPreviewBeatmapLevel*>(LevelCollectionTableView->dyn__selectedPreviewBeatmapLevel());
             RuntimeSongLoader::API::DeleteSong(to_utf8(csstrtostr(selectedlevel->get_customLevelPath())), [this] {
                     if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_REMOVE)) {
@@ -729,7 +744,7 @@ void PlaylistEditor::CreateSongActionButton() {
 
     posX += 15.0f + 1.25f ;
     this->removeButton = new IconButton("RemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
-                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                                            UnityEngine::Vector2(posX, posY - 15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
             if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_REMOVE)) {
                 Toast::GetInstance()->ShowMessage(this->IsSelectedCustomPack() ? "Remove song from the list" : "Remove song from all list");
                 if (this->IsSelectedCustomPack()) {
@@ -744,7 +759,7 @@ void PlaylistEditor::CreateSongActionButton() {
 
     posX += 10.0f + 1.25f;
     this->moveUpButton = new IconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
-                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                                            UnityEngine::Vector2(posX, posY - 15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
             if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_MOVE_UP)) {
                 Toast::GetInstance()->ShowMessage("Move up song");
                 this->MoveUpSelectedSong();
@@ -756,7 +771,7 @@ void PlaylistEditor::CreateSongActionButton() {
 
     posX += 10.0f + 1.25f;
     this->moveDownButton = new IconButton("MoveDownFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
-                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                                            UnityEngine::Vector2(posX, posY - 15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
 
             if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_MOVE_DOWN)) {
                 Toast::GetInstance()->ShowMessage("Move down song");
@@ -769,7 +784,7 @@ void PlaylistEditor::CreateSongActionButton() {
 
     posX += 10.0f + 1.25f;
     this->insertButton = new IconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
-                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                                            UnityEngine::Vector2(posX, posY - 15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
             if (this->listModal && this->listModal->GetActive()) {
                 this->listModal->SetActive(false);
                 return;
@@ -779,7 +794,7 @@ void PlaylistEditor::CreateSongActionButton() {
                 auto screenContainer = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [](auto x) {
                     return x->get_name()->Equals(il2cpp_utils::newcsstr("ScreenContainer"));
                 });
-                this->listModal = new ListModal(screenContainer->get_transform(), UnityEngine::Vector2(30.0f, 25.0f), UnityEngine::Vector2(posX + 84.0f, -25.0f),
+                this->listModal = new ListModal(screenContainer->get_transform(), UnityEngine::Vector2(30.0f, 25.0f), UnityEngine::Vector2(posX + 84.0f, posY - 25.0f),
                                                 [this] (const int i, const std::string &selectedPackName) {
                     const auto selectedPackIdx = i + 1;
                     const std::string selectedPackId = CustomLevelPackPrefixID + selectedPackName;

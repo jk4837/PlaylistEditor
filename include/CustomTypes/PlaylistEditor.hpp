@@ -77,6 +77,7 @@ private:
     void AcquiredObject();
     void RegistEvent();
     void ResetUI();
+    void AdjustPackTableViewWidth();
     void RemoveSelectedSongInTable();
     void InsertSelectedSongToTable();
     void RefreshAndStayList(const REFESH_TYPE act);
