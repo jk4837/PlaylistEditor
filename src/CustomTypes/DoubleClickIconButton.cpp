@@ -47,7 +47,7 @@ DoubleClickIconButton::DoubleClickIconButton(UnityEngine::UI::Button *btn, const
     this->btn_ = btn;
     this->btn_->set_onClick(UnityEngine::UI::Button::ButtonClickedEvent::New_ctor());
     this->btn_->get_onClick()->AddListener(PlaylistEditor::Utils::MakeDelegate<UnityEngine::Events::UnityAction*>(onClick));
-    this->imageView_ = btn_->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([] (auto x) -> bool { return "Icon" == x->get_name(); });
+    this->imageView_ = QuestUI::ArrayUtil::First(btn_->get_transform()->GetComponentsInChildren<HMUI::ImageView*>(), [] (auto x) -> bool { return x->get_name()->Equals(il2cpp_utils::newcsstr("Icon")); });
 }
 
 }

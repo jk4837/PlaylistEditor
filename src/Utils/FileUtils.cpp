@@ -298,7 +298,7 @@ void FileUtils::ReloadPlaylistPath() {
         auto path = entry.path().string();
         if (!LoadFile(path, document))
             continue;
-        const std::string playlistTitle = document.GetObject()["playlistTitle"].GetString();
+        const std::string playlistTitle = to_utf8(csstrtostr(il2cpp_utils::newcsstr(document.GetObject()["playlistTitle"].GetString()))); // turn utf8 char to '?'
         const std::string playlistID = Utils::CustomLevelPackPrefixID + playlistTitle;
         playlists.push_back(make_tuple(playlistID, path));
         // INFO("LoadPlaylists #%d %s : %s", playlists.size()+1, playlistID.c_str(), path.c_str());
@@ -361,8 +361,8 @@ bool FileUtils::DeleteFile(const std::string &path) {
 
 static std::string GetCoverImageBase64String(GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel)
 {
-    const ::ArrayW<uint8_t> byteArray = UnityEngine::ImageConversion::EncodeToPNG(selectedLevel->dyn__coverImage()->get_texture());
-    return "data:image/png;base64," + System::Convert::ToBase64String(byteArray);
+    Array<uint8_t> *byteArray = UnityEngine::ImageConversion::EncodeToPNG(selectedLevel->dyn__coverImage()->get_texture());
+    return "data:image/png;base64," + to_utf8(csstrtostr(System::Convert::ToBase64String(byteArray)));
 }
 
 bool FileUtils::SetCoverImage(const std::string &path, GlobalNamespace::CustomPreviewBeatmapLevel *selectedLevel)
@@ -398,7 +398,7 @@ bool FileUtils::UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPr
             throw std::invalid_argument("failed to load file");
 
         int idx = 0;
-        const std::string selectedLevelID = selectedLevel->get_levelID();
+        const std::string selectedLevelID = to_utf8(csstrtostr(selectedLevel->get_levelID()));
         const auto &songs = document.GetObject()["songs"].GetArray();
         switch (act) {
             case ITEM_INSERT:
@@ -411,11 +411,11 @@ bool FileUtils::UpdateFile(const int selectedLevelIdx, GlobalNamespace::CustomPr
                     insertSong.CopyFrom(songs[idx], allocator2);
                 else {
                     insertSong.SetObject();
-                    insertSong.AddMember("songName", std::string(selectedLevel->get_songName()), allocator2);
-                    insertSong.AddMember("levelAuthorName", std::string(selectedLevel->get_levelAuthorName()), allocator2);
+                    insertSong.AddMember("songName", to_utf8(csstrtostr(selectedLevel->get_songName())), allocator2);
+                    insertSong.AddMember("levelAuthorName", to_utf8(csstrtostr(selectedLevel->get_levelAuthorName())), allocator2);
                     insertSong.AddMember("hash", selectedLevelID.substr(Utils::CustomLevelPrefixID.length()), allocator2);
                     insertSong.AddMember("levelid", selectedLevelID, allocator2);
-                    insertSong.AddMember("uploader", std::string(selectedLevel->get_levelAuthorName()), allocator2);
+                    insertSong.AddMember("uploader", to_utf8(csstrtostr(selectedLevel->get_levelAuthorName())), allocator2);
                 }
 
                 if (!insertSong.HasMember("char"))

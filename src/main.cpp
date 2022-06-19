@@ -19,6 +19,7 @@
 #include "CustomTypes/Logging.hpp"
 #include "Utils/FileUtils.hpp"
 #include "Utils/UIUtils.hpp"
+#include "Utils/Utils.hpp"
 
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
 static PlaylistEditor::PlaylistEditor *playlistEditor = nullptr;
@@ -52,7 +53,7 @@ MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &GlobalNamespace::Standa
 MAKE_HOOK_MATCH(StandardLevelDetailViewController_ShowContent, &GlobalNamespace::StandardLevelDetailViewController::ShowContent,
                 void, GlobalNamespace::StandardLevelDetailViewController *self,
                 GlobalNamespace::StandardLevelDetailViewController::ContentType contentType,
-                ::StringW errorText, float downloadingProgress, ::StringW downloadingText)
+                ::Il2CppString* errorText, float downloadingProgress, ::Il2CppString* downloadingText)
 {
     // when select new level
     StandardLevelDetailViewController_ShowContent(self, contentType, errorText, downloadingProgress, downloadingText);
@@ -65,18 +66,18 @@ MAKE_HOOK_MATCH(StandardLevelDetailViewController_ShowContent, &GlobalNamespace:
 
 static void showRestoreDialog()
 {
-    auto mainScreen = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([] (auto x) {
-        return x->get_name()->Equals("MainScreen");
+    auto mainScreen = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [] (auto x) {
+        return x->get_name()->Equals(il2cpp_utils::newcsstr("MainScreen"));
     });
     PlaylistEditor::Utils::ShowRestoreDialog(mainScreen, [&] () {
         INFO("Restore playlists");
         PlaylistEditor::FileUtils::RestorePlaylistFile();
 
         INFO("Refresh playlists");
-        auto customBeatmapLevelPackCollectionSO = UnityEngine::Resources::FindObjectsOfTypeAll<RuntimeSongLoader::SongLoaderBeatmapLevelPackCollectionSO*>().First();
+        auto customBeatmapLevelPackCollectionSO = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<RuntimeSongLoader::SongLoaderBeatmapLevelPackCollectionSO*>());
         customBeatmapLevelPackCollectionSO->ClearLevelPacks();
         PlaylistManager::LoadPlaylists(customBeatmapLevelPackCollectionSO, true);
-        RuntimeSongLoader::API::RefreshPacks(true);
+        // RuntimeSongLoader::API::RefreshPacks(true); // not found
     }, [] () {
         INFO("Not restore playlists");
         PlaylistEditor::FileUtils::RemoveTmpDir();
@@ -99,7 +100,7 @@ MAKE_HOOK_MATCH(MainFlowCoordinator_DidActivate, &GlobalNamespace::MainFlowCoord
 // for getting difficultyBeatmaps
 MAKE_HOOK_MATCH(BeatmapDifficultySegmentedControlController_SetData, &GlobalNamespace::BeatmapDifficultySegmentedControlController::SetData,
                 void, GlobalNamespace::BeatmapDifficultySegmentedControlController *self,
-                System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::IDifficultyBeatmap*>* difficultyBeatmaps,
+                Array<GlobalNamespace::IDifficultyBeatmap*>* difficultyBeatmaps,
                 GlobalNamespace::BeatmapDifficulty selectedDifficulty)
 {
     if (playlistEditor->IsSelectedCustomPack())
@@ -110,7 +111,7 @@ MAKE_HOOK_MATCH(BeatmapDifficultySegmentedControlController_SetData, &GlobalName
 // for getting difficultyBeatmapSets
 MAKE_HOOK_MATCH(BeatmapCharacteristicSegmentedControlController_SetData, &GlobalNamespace::BeatmapCharacteristicSegmentedControlController::SetData,
                 void, GlobalNamespace::BeatmapCharacteristicSegmentedControlController *self,
-                System::Collections::Generic::IReadOnlyList_1<::GlobalNamespace::IDifficultyBeatmapSet*>* difficultyBeatmapSets,
+                Array<GlobalNamespace::IDifficultyBeatmapSet*>* difficultyBeatmapSets,
                 GlobalNamespace::BeatmapCharacteristicSO* selectedBeatmapCharacteristic)
 {
     if (playlistEditor->IsSelectedCustomPack())

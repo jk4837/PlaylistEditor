@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include "CustomTypes/Logging.hpp"
+#include "Backport/typedefs-string.hpp"
 
 #include "questui/shared/BeatSaberUI.hpp"
 #include "questui/shared/CustomTypes/Components/Backgroundable.hpp"
@@ -120,7 +121,7 @@ void Toast::UpdateState() {
         needsUpdate = false;
         SetActive(true);
         if(textObject)
-            textObject->set_text(newText);
+            textObject->set_text(il2cpp_utils::newcsstr(newText));
     }
 
     if(!isActive)

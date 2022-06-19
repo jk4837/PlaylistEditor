@@ -13,7 +13,7 @@ IconButton::IconButton(const std::string_view &name, UnityEngine::Transform *par
                        const std::function<void(void)> &onClick, UnityEngine::Sprite *icon, const std::string_view &hint)
 {
     this->btn_ = Utils::CreateIconButton(name, parent, buttonTemplate, anchoredPosition, sizeDelta, onClick, icon, hint);
-    this->imageView_ = btn_->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([] (auto x) -> bool { return "Icon" == x->get_name(); });
+    this->imageView_ = QuestUI::ArrayUtil::First(btn_->get_transform()->GetComponentsInChildren<HMUI::ImageView*>(), [] (auto x) -> bool { return x->get_name()->Equals(il2cpp_utils::newcsstr("Icon")); });
 }
 
 void IconButton::ResetUI()
@@ -34,7 +34,7 @@ void IconButton::SetInteractable(const bool interactable)
 
 void IconButton::SetButtonBackgroundActive(const bool active)
 {
-    auto background = btn_->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().First([] (auto x) -> bool { return "BG" == x->get_name(); });
+    auto background = QuestUI::ArrayUtil::First(btn_->get_transform()->GetComponentsInChildren<HMUI::ImageView*>(), [] (auto x) -> bool { return x->get_name()->Equals(il2cpp_utils::newcsstr("BG")); });
     if (background)
         background->get_gameObject()->SetActive(active);
 }
@@ -46,7 +46,7 @@ void IconButton::SetActive(const bool active)
 
 void IconButton::ChangeHoverHint(const std::string &hint)
 {
-    this->btn_->get_gameObject()->GetComponentsInChildren<HMUI::HoverHint *>().First()->set_text(hint);
+    QuestUI::ArrayUtil::First(this->btn_->get_gameObject()->GetComponentsInChildren<HMUI::HoverHint *>())->set_text(il2cpp_utils::newcsstr(hint));
 }
 
 }

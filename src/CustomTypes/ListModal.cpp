@@ -5,6 +5,7 @@
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "HMUI/ScrollView.hpp"
 #include "questui/shared/BeatSaberUI.hpp"
+#include "Backport/BeatSaberUI.hpp"
 
 namespace PlaylistEditor
 {
@@ -55,7 +56,7 @@ void ListModal::SetActive(const bool active)
     if (this->listModal_) {
         this->listModal_->get_gameObject()->set_active(active);
         if (this->initSelectIdx_ > 0)
-            routine_ = GlobalNamespace::SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(this->ScrollToInitSelect()));
+            routine_ = GlobalNamespace::SharedCoroutineStarter::get_instance()->StartCoroutine(reinterpret_cast<System::Collections::IEnumerator*>(custom_types::Helpers::CoroutineHelper::New(this->ScrollToInitSelect())));
     }
 
     if (!active) {

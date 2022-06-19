@@ -2,6 +2,9 @@
 
 #include <string>
 
+#include "Backport/typedefs-string.hpp"
+#include "questui/shared/ArrayUtil.hpp"
+#include "beatsaber-hook/shared/utils/il2cpp-utils.hpp"
 #include "CustomTypes/Logging.hpp"
 #include "CustomTypes/DoubleClickIconButton.hpp"
 
@@ -31,17 +34,17 @@ void listAllName(UnityEngine::Transform *parent, const std::string &prefix = "")
     // INFO("%s #p: tag: %s, name: %s, id: %u", prefix.c_str(), std::string(parent->get_tag()).c_str(), std::string(parent->get_name()).c_str(), parent->GetInstanceID());
     auto childs = parent->GetComponentsInChildren<T *>();
     std::vector<size_t> vec;
-    for (size_t i = 0, idx = 1; i < childs.Length(); i++) {
-        if (parent->GetInstanceID() == childs.get(i)->GetInstanceID())
+    for (size_t i = 0, idx = 1; i < childs->Length(); i++) {
+        if (parent->GetInstanceID() == childs->get(i)->GetInstanceID())
             continue;
-        if (parent->GetInstanceID() != childs.get(i)->get_transform()->get_parent()->GetInstanceID())
+        if (parent->GetInstanceID() != childs->get(i)->get_transform()->get_parent()->GetInstanceID())
             continue;
         vec.push_back(i);
     }
     for (size_t idx = 0; idx < vec.size(); idx++) {
         const int i = vec[idx];
-        INFO("%s|--%zu: name: %s, id: %u %s", prefix.c_str(), idx, std::string(childs.get(i)->get_name()).c_str(), childs.get(i)->GetInstanceID(), "Untagged" != childs.get(i)->get_tag() ? std::string(", tag: " + childs.get(i)->get_tag()).c_str() : "");
-        listAllName<T>(childs.get(i)->get_transform(), prefix + (idx != vec.size()-1 ? "|  " : "   "));
+        INFO("%s|--%zu: name: %s, id: %u %s", prefix.c_str(), idx, to_utf8(csstrtostr(childs->get(i)->get_name())).c_str(), childs->get(i)->GetInstanceID(), "Untagged" != to_utf8(csstrtostr(childs->get(i)->get_tag())) ? std::string(", tag: " + to_utf8(csstrtostr(childs->get(i)->get_tag()))).c_str() : "");
+        listAllName<T>(childs->get(i)->get_transform(), prefix + (idx != vec.size()-1 ? "|  " : "   "));
     }
 }
 

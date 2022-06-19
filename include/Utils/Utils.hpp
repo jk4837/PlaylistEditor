@@ -3,6 +3,7 @@
 #include <map>
 
 #include "beatsaber-hook/shared/utils/il2cpp-utils.hpp"
+#include "Backport/typedefs-array.hpp"
 
 namespace PlaylistEditor::Utils
 {
@@ -17,7 +18,7 @@ const std::string CustomLevelName = "Custom Levels";
 
 template <class T>
 constexpr ArrayW<T> listToArrayW(::System::Collections::Generic::IReadOnlyList_1<T> *list) {
-    return ArrayW<T>(reinterpret_cast<Array<T>*>(list));
+    return ArrayW<T>(reinterpret_cast<ArrayW<T>*>(list));
 }
 
 template <class T>

@@ -13,12 +13,12 @@
 #include "UnityEngine/Events/UnityAction.hpp"
 #include "UnityEngine/Material.hpp"
 #include "UnityEngine/Object.hpp"
+#include "UnityEngine/Resources.hpp"
 #include "UnityEngine/UI/Button_ButtonClickedEvent.hpp"
 #include "UnityEngine/UI/Button.hpp"
 #include "UnityEngine/UI/Image.hpp"
 #include "UnityEngine/WaitForFixedUpdate.hpp"
 #include "questui/shared/BeatSaberUI.hpp"
-#include "questui/shared/CustomTypes/Components/WeakPtrGO.hpp"
 
 namespace PlaylistEditor::Utils
 {
@@ -29,7 +29,7 @@ UnityEngine::Sprite *FileToSprite(const std::string_view &image_name)
 
     if (!std::filesystem::is_regular_file(path)) {
         ERROR("Failed to load sprite from file %s", path.c_str());
-        return UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Sprite*>().First();
+        return QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Sprite*>());
     }
     return QuestUI::BeatSaberUI::FileToSprite(path);
 }
@@ -41,21 +41,21 @@ UnityEngine::UI::Button *CreateIconButton(const std::string_view &name, UnityEng
     static UnityEngine::Material *templateMaterial = nullptr;
 
     if (!templateMaterial) {
-        auto practiceButton = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::UI::Button*>().First([] (auto x) { return x->get_name() == "PracticeButton"; } );
+        auto practiceButton = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::UI::Button*>(), [] (auto x) { return x->get_name()->Equals(il2cpp_utils::newcsstr("PracticeButton")); } );
         if (practiceButton)
             templateMaterial = practiceButton->get_gameObject()->GetComponentInChildren<HMUI::ImageView*>()->get_material();
     }
     auto btn = QuestUI::BeatSaberUI::CreateUIButton(parent, "", buttonTemplate, anchoredPosition, sizeDelta, onClick);
-
+    btn->set_name(il2cpp_utils::newcsstr(name));
     QuestUI::BeatSaberUI::AddHoverHint(btn->get_gameObject(), hint);
 
-    UnityEngine::Object::Destroy(btn->get_transform()->Find("Underline")->get_gameObject());
+    UnityEngine::Object::Destroy(btn->get_transform()->Find(il2cpp_utils::newcsstr("Underline"))->get_gameObject());
 
-    UnityEngine::Transform *contentTransform = btn->get_transform()->Find("Content");
-    UnityEngine::Object::Destroy(contentTransform->Find("Text")->get_gameObject());
+    UnityEngine::Transform *contentTransform = btn->get_transform()->Find(il2cpp_utils::newcsstr("Content"));
+    UnityEngine::Object::Destroy(contentTransform->Find(il2cpp_utils::newcsstr("Text"))->get_gameObject());
     UnityEngine::Object::Destroy(contentTransform->GetComponent<UnityEngine::UI::LayoutElement*>());
 
-    UnityEngine::UI::Image *iconImage = UnityEngine::GameObject::New_ctor("Icon")->AddComponent<HMUI::ImageView*>();
+    UnityEngine::UI::Image *iconImage = UnityEngine::GameObject::New_ctor(il2cpp_utils::newcsstr("Icon"))->AddComponent<HMUI::ImageView*>();
     if (templateMaterial)
         iconImage->set_material(templateMaterial);
     iconImage->get_rectTransform()->SetParent(btn->get_transform(), false);
@@ -69,13 +69,13 @@ UnityEngine::UI::Button *CreateIconButton(const std::string_view &name, UnityEng
 HMUI::InputFieldView *CreateStringInput(UnityEngine::Transform *parent, const StringW &settingsName, const StringW &currentValue,
                                         const UnityEngine::Vector2 &anchoredPosition, const float width,
                                         const std::function<void(StringW)> &onEnter) {
-    auto originalFieldView = UnityEngine::Resources::FindObjectsOfTypeAll<HMUI::InputFieldView *>().First(
+    auto originalFieldView = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<HMUI::InputFieldView *>(),
         [] (HMUI::InputFieldView *x) {
-            return x->get_name() == "GuestNameInputField";
+            return to_utf8(csstrtostr(x->get_name())) == "GuestNameInputField";
         }
     );
     UnityEngine::GameObject *gameObj = UnityEngine::Object::Instantiate(originalFieldView->get_gameObject(), parent, false);
-    gameObj->set_name("QuestUIStringInput");
+    gameObj->set_name(il2cpp_utils::newcsstr("QuestUIStringInput"));
 
     UnityEngine::RectTransform *rectTransform = gameObj->GetComponent<UnityEngine::RectTransform*>();
     rectTransform->SetParent(parent, false);
@@ -116,14 +116,14 @@ static HMUI::ModalView *CreateRestoreDialog(UnityEngine::Transform *parent, cons
         restoreDialogPromptModal->Hide(true, nullptr);
         onOK();
     });
-    UnityEngine::Object::Destroy(restoreButton->get_transform()->Find("Content")->GetComponent<UnityEngine::UI::LayoutElement*>());
+    UnityEngine::Object::Destroy(restoreButton->get_transform()->Find(il2cpp_utils::newcsstr("Content"))->GetComponent<UnityEngine::UI::LayoutElement*>());
 
     auto cancelButton = QuestUI::BeatSaberUI::CreateUIButton(restoreDialogPromptModal->get_transform(), "Cancel",
                                                              UnityEngine::Vector2(width/4, -height/2 + 5.5), [restoreDialogPromptModal, onCancel] {
         restoreDialogPromptModal->Hide(true, nullptr);
         onCancel();
     });
-    UnityEngine::Object::Destroy(cancelButton->get_transform()->Find("Content")->GetComponent<UnityEngine::UI::LayoutElement*>());
+    UnityEngine::Object::Destroy(cancelButton->get_transform()->Find(il2cpp_utils::newcsstr("Content"))->GetComponent<UnityEngine::UI::LayoutElement*>());
 
     TMPro::TextMeshProUGUI* title = QuestUI::BeatSaberUI::CreateText(restoreDialogPromptModal->get_transform(), "PLAYLIST EDITOR", false, {0, height/2 - 5.5}, {width-5, 8.5});
     title->set_alignment(TMPro::TextAlignmentOptions::Center);
@@ -154,7 +154,7 @@ static custom_types::Helpers::Coroutine DoShowRestoreDialog(UnityEngine::Transfo
 void ShowRestoreDialog(UnityEngine::Transform *parent, const std::function<void(void)> &onOK, const std::function<void(void)> &onCancel)
 {
     // use coroutine or will showing without focus
-    GlobalNamespace::SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(DoShowRestoreDialog(parent, onOK, onCancel)));
+    GlobalNamespace::SharedCoroutineStarter::get_instance()->StartCoroutine(reinterpret_cast<System::Collections::IEnumerator*>(custom_types::Helpers::CoroutineHelper::New(DoShowRestoreDialog(parent, onOK, onCancel))));
 }
 
 }

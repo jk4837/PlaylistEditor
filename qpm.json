@@ -13,7 +13,7 @@
 	"dependencies": [
 		{
 			"id": "beatsaber-hook",
-			"versionRange": "=3.7.4",
+			"versionRange": "=2.3.2",
 			"additionalData": {
 				"extraFiles": [
 					"src/inline-hook"
@@ -29,29 +29,29 @@
 		},
 		{
 			"id": "codegen",
-			"versionRange": "=0.22.0",
+			"versionRange": "=0.14.0",
 			"additionalData": {
 
 			}
 		},
 		{
 		  "id": "custom-types",
-		  "versionRange": "=0.15.9",
+		  "versionRange": "=0.12.8",
 		  "additionalData": {}
 		},
 		{
 		  "id": "songloader",
-		  "versionRange": "=0.9.3",
+		  "versionRange": "=0.7.2",
 		  "additionalData": {}
 		},
 		{
 		  "id": "playlistmanager",
-		  "versionRange": "=0.2.3",
+		  "versionRange": "=0.1.4",
 		  "additionalData": {}
 		},
 		{
 		  "id": "questui",
-		  "versionRange": "=0.13.5",
+		  "versionRange": "=0.11.1",
 		  "additionalData": {}
 		}
 	],
