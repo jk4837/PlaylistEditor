@@ -18,12 +18,21 @@ IconButton::IconButton(const std::string_view &name, UnityEngine::Transform *par
 
 void IconButton::ResetUI()
 {
+    if (!this->imageView_) {
+        ERROR("Null imageView");
+        return;
+    }
     this->imageView_->set_color(UnityEngine::Color::get_white());
     btn_->set_interactable(true);
 }
 
 void IconButton::SetInteractable(const bool interactable)
 {
+    if (!this->imageView_) {
+        ERROR("Null imageView");
+        return;
+    }
+
     btn_->set_interactable(interactable);
 
     if (interactable)
