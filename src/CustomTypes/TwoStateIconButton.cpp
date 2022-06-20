@@ -19,12 +19,13 @@ TwoStateIconButton::TwoStateIconButton(const std::string_view &name, UnityEngine
                                          IconButton(name, parent, buttonTemplate, anchoredPosition, sizeDelta, nullptr, icon1, hint1)
 {
     std::function<void()> onClick = (std::function<void()>) [this, onClick1, onClick2] () {
+        const bool oldIsFirstState = this->isFirstState_;
         if (this->isFirstState_)
             onClick1();
         else
             onClick2();
 
-        if (this->autoChangeState_)
+        if (this->autoChangeState_ && (oldIsFirstState == this->isFirstState_)) // in case user change state in onClick and change again here
             this->SetIsFirstState(!isFirstState_);
     };
 
