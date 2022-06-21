@@ -77,7 +77,7 @@ static void showRestoreDialog()
         auto customBeatmapLevelPackCollectionSO = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<RuntimeSongLoader::SongLoaderBeatmapLevelPackCollectionSO*>());
         customBeatmapLevelPackCollectionSO->ClearLevelPacks();
         PlaylistManager::LoadPlaylists(customBeatmapLevelPackCollectionSO, true);
-        // RuntimeSongLoader::API::RefreshPacks(true); // not found
+        RuntimeSongLoader::API::RefreshSongs(false);
     }, [] () {
         INFO("Not restore playlists");
         PlaylistEditor::FileUtils::RemoveTmpDir();

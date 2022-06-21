@@ -943,19 +943,29 @@ void PlaylistEditor::RefreshAndStayList(const REFESH_TYPE act)
         const auto lastCollectionName = this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection() ?
                                         to_utf8(csstrtostr(this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_collectionName())) : "";
         const auto lastCollectionNameCS = il2cpp_utils::newcsstr(lastCollectionName);
-        // RuntimeSongLoader::API::RefreshPacks(true); // not found
-        if ("" != lastCollectionName) {
-            INFO("select collection %d %s", lastCollectionIdx, lastCollectionName.c_str());
-            // select level collection
-            auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
-            for (int i = lastCollectionIdx; i < annotatedBeatmapLevelCollections.Length(); i++) // index may move back when new list created
-            {
-                if (annotatedBeatmapLevelCollections[i]->get_collectionName()->Equals(lastCollectionNameCS)) {
-                    this->AnnotatedBeatmapLevelCollectionsViewController->SetData(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections(), i, false);
-                    break;
+        const auto lastCollectionScrollPos = this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollectionsTableView()->dyn__tableView()->get_scrollView()->dyn__destinationPos();
+        this->AdjustPackTableViewWidth();
+        RuntimeSongLoader::API::RefreshSongs(false, [=] (const std::vector<GlobalNamespace::CustomPreviewBeatmapLevel*>&) {
+            INFO("scroll to %lf", lastCollectionScrollPos);
+            if ("" != lastCollectionName) {
+                INFO("select collection %d %s", lastCollectionIdx, lastCollectionName.c_str());
+                // select level collection
+                auto annotatedBeatmapLevelCollections = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollections());
+                for (int i = lastCollectionIdx; i < annotatedBeatmapLevelCollections.Length(); i++) // index may move back when new list created
+                {
+                    if (annotatedBeatmapLevelCollections[i]->get_collectionName()->Equals(lastCollectionNameCS)) {
+                        INFO("found collection %d %s", i, lastCollectionName.c_str());
+                        this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollectionsTableView()->dyn__tableView()->SelectCellWithIdx(i, true); // select but scroll at head
+                        break;
+                    }
                 }
             }
-        }
+            this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollectionsTableView()->dyn__tableView()->get_scrollView()->ScrollTo(lastCollectionScrollPos, false);
+
+            INFO("select level %d %f", selectedRow, lastScrollPos);
+            this->LevelCollectionTableView->dyn__tableView()->SelectCellWithIdx(selectedRow, true); // select but scroll at head
+            this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(lastScrollPos, false);
+        });
     } else { // song action
         const float rowHeight = this->LevelCollectionTableView->CellSize();
 
@@ -973,14 +983,14 @@ void PlaylistEditor::RefreshAndStayList(const REFESH_TYPE act)
                 nextSelectedRow = this->LevelCollectionTableView->NumberOfCells() - 1;
         } else if (SONG_STAY == act) {
         }
+        INFO("select level %d %f %f", nextSelectedRow, lastScrollPos, nextScrollPos);
+        // this->LevelCollectionTableView->SelectLevel(nextPreviewBeatmapLevels); // this will jump to center
+        this->LevelCollectionTableView->dyn__tableView()->SelectCellWithIdx(nextSelectedRow, true); // select but scroll at head
+        this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(lastScrollPos, false);
+        if (nextScrollPos != lastScrollPos)
+            this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(nextScrollPos, true);
     }
 
-    INFO("select level %d %f %f", nextSelectedRow, lastScrollPos, nextScrollPos);
-    // this->LevelCollectionTableView->SelectLevel(nextPreviewBeatmapLevels); // this will jump to center
-    this->LevelCollectionTableView->dyn__tableView()->SelectCellWithIdx(nextSelectedRow, true); // select but scroll at head
-    this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(lastScrollPos, false);
-    if (nextScrollPos != lastScrollPos)
-        this->LevelCollectionTableView->dyn__tableView()->get_scrollView()->ScrollTo(nextScrollPos, true);
 }
 
 }
