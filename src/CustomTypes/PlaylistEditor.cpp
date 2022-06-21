@@ -348,7 +348,11 @@ void PlaylistEditor::SetSelectedCoverImage(const int collectionIdx, UnityEngine:
     if (!image)
         image = annotatedBeatmapLevelCollections[0]->get_coverImage(); // default cover
     reinterpret_cast<::GlobalNamespace::CustomBeatmapLevelPack*>(annotatedBeatmapLevelCollections[collectionIdx])->dyn__coverImage() = image;
+
+    const auto lastScrollPos = this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollectionsTableView()->dyn__tableView()->get_scrollView()->dyn__destinationPos();
     this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollectionsTableView()->dyn__tableView()->ReloadData();
+    this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollectionsTableView()->dyn__tableView()->get_scrollView()->ScrollTo(lastScrollPos, false);
+    this->AdjustUI();
 
     if (this->IsSelectedCustomPack() && !this->IsSelectedCustomLevel()) // select pack header
         this->LevelCollectionNavigationController->dyn__levelPackDetailViewController()->dyn__packImage()->set_sprite(image);
