@@ -16,6 +16,7 @@
 #include "GlobalNamespace/LevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/PartyFreePlayFlowCoordinator.hpp"
 #include "GlobalNamespace/SelectLevelCategoryViewController.hpp"
+#include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
 #include "HMUI/ImageView.hpp"
 #include "HMUI/ScrollView.hpp"
@@ -23,9 +24,8 @@
 #include "System/Action_2.hpp"
 #include "System/Action_4.hpp"
 #include "System/Action.hpp"
-#include "UnityEngine/Resources.hpp"
-#include "UnityEngine/Transform.hpp"
 #include "UnityEngine/Material.hpp"
+#include "UnityEngine/WaitForFixedUpdate.hpp"
 #include "songloader/shared/API.hpp"
 #include "questui/shared/BeatSaberUI.hpp"
 
@@ -855,8 +855,15 @@ void PlaylistEditor::CreateSongActionButton() {
 
 void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casue don't know how to decide if now at main menu
 {
+    GlobalNamespace::SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(this->doAdjustUI(forceDisable)));
+}
+
+custom_types::Helpers::Coroutine PlaylistEditor::doAdjustUI(const bool forceDisable) // use forceDisable, casue don't know how to decide if now at main menu
+{
+    co_yield reinterpret_cast<System::Collections::IEnumerator *>(UnityEngine::WaitForFixedUpdate::New_ctor());
+
     if (!this->init)
-        return;
+        co_return;
     bool atCustomCategory = this->IsSelectedCustomCategory();
     bool atCustomPack = this->IsSelectedCustomPack();
     bool atCustomLevel = this->IsSelectedCustomLevel();
@@ -918,7 +925,7 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
                 this->recordPackName = "";
                 this->recordListButton->SetIsFirstState(true);
                 Toast::GetInstance()->ShowMessage("Stop record playing level to new list");
-                return;
+                co_return;
             }
         }
     }
@@ -926,6 +933,7 @@ void PlaylistEditor::AdjustUI(const bool forceDisable) // use forceDisable, casu
         this->packDurationText->set_text("Duration\n" + this->GetSelectedPackDuration());
         this->packDurationText->get_gameObject()->set_active(true);
     }
+    co_return;
 }
 
 void PlaylistEditor::RefreshAndStayList(const REFESH_TYPE act)
