@@ -69,7 +69,7 @@ static void showRestoreDialog()
     auto mainScreen = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>(), [] (auto x) {
         return x->get_name()->Equals(il2cpp_utils::newcsstr("MainScreen"));
     });
-    PlaylistEditor::Utils::ShowRestoreDialog(mainScreen, [&] () {
+    PlaylistEditor::Utils::ShowRestoreDialog(mainScreen, [] () {
         INFO("Restore playlists");
         PlaylistEditor::FileUtils::RestorePlaylistFile();
 
