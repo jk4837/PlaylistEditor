@@ -38,6 +38,7 @@ public:
     void CreateSongActionButton();
     void CreatePackHeaderDetail();
     void SelectLockCharDiff();
+    custom_types::Helpers::Coroutine doAdjustUI(const bool forceDisable = false);
     void AdjustUI(const bool forceDisable = false);   // use forceDisable, cause don't know how to decide if now at main menu
 
     bool isLevelDetailReady = false;
