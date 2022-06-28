@@ -741,7 +741,7 @@ void PlaylistEditor::CreateSongActionButton() {
 
     posX += 15.0f + 1.25f ;
     this->removeButton = new IconButton("RemoveFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
-                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [this]() {
             if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_REMOVE)) {
                 Toast::GetInstance()->ShowMessage(this->IsSelectedCustomPack() ? "Remove song from the list" : "Remove song from all list");
                 if (this->IsSelectedCustomPack()) {
@@ -756,7 +756,7 @@ void PlaylistEditor::CreateSongActionButton() {
 
     posX += 10.0f + 1.25f;
     this->moveUpButton = new IconButton("MoveUpFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
-                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [this]() {
             if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_MOVE_UP)) {
                 Toast::GetInstance()->ShowMessage("Move up song");
                 this->MoveUpSelectedSong();
@@ -768,7 +768,7 @@ void PlaylistEditor::CreateSongActionButton() {
 
     posX += 10.0f + 1.25f;
     this->moveDownButton = new IconButton("MoveDownFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
-                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [this]() {
 
             if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_MOVE_DOWN)) {
                 Toast::GetInstance()->ShowMessage("Move down song");
@@ -781,17 +781,16 @@ void PlaylistEditor::CreateSongActionButton() {
 
     posX += 10.0f + 1.25f;
     this->insertButton = new IconButton("InsertFromListButton", deleteButtonTransform->get_parent()->get_parent(), "PracticeButton",
-                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [&]() {
+                                            UnityEngine::Vector2(posX, -15.0f), UnityEngine::Vector2(10.0f,7.0f), [this, posX]() {
             if (this->listModal && this->listModal->GetActive()) {
                 this->listModal->SetActive(false);
                 return;
             }
-
             if (!this->listModal) {
                 auto screenContainer = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([](auto x) {
                     return x->get_name()->Equals("ScreenContainer");
                 });
-                this->listModal = new ListModal(screenContainer->get_transform(), UnityEngine::Vector2(30.0f, 25.0f), UnityEngine::Vector2(posX + 84.0f, -25.0f),
+                this->listModal = new ListModal(screenContainer->get_transform(), UnityEngine::Vector2(30.0f, 25.0f), UnityEngine::Vector2(posX + 57.0f, -25.0f),
                                                 [this] (const int i, const std::string &selectedPackName) {
                     const auto selectedPackIdx = i + 1;
                     const std::string selectedPackId = CustomLevelPackPrefixID + selectedPackName;
@@ -820,7 +819,6 @@ void PlaylistEditor::CreateSongActionButton() {
                 if (CustomLevelName == selectedPackName)
                     continue;
                 listItem.push_back(selectedPackName);
-                DEBUG("#%d add %s to insert list", i, std::string(selectedPackName).c_str()); // print this log to fix the insert list not showing bug
             }
 
             this->lastInsertPackIdx = this->FindPackIdx(this->lastInsertPackName, this->lastInsertPackIdx);
@@ -832,7 +830,7 @@ void PlaylistEditor::CreateSongActionButton() {
 
     this->lockButton = new TwoStateIconButton("LockButton", this->LevelCollectionNavigationController->get_transform(), "PracticeButton",
                                               UnityEngine::Vector2(4.0f, -5.5f), UnityEngine::Vector2(7.0f,14.5f),
-        [&] () {
+        [this] () {
             INFO("Lock char %s, diff %d",
                 std::string(this->StandardLevelDetailView->dyn__beatmapCharacteristicSegmentedControlController()->get_selectedBeatmapCharacteristic()->get_serializedName()).c_str(),
                 int(this->StandardLevelDetailView->dyn__beatmapDifficultySegmentedControlController()->get_selectedDifficulty()));
@@ -842,7 +840,7 @@ void PlaylistEditor::CreateSongActionButton() {
                 Toast::GetInstance()->ShowMessage("Lock Selected Char and Diff");
             }
         }, FileToSprite("UnlockIcon"), "Lock Selected Char and Diff",
-        [&] () {
+        [this] () {
             if (this->UpdateFileWithSelected(FILE_ACTION::ITEM_UNLOCK)) {
                 this->selectedLockCharStr = "";
                 this->selectedLockDiff = 0;

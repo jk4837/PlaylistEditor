@@ -68,7 +68,7 @@ static void showRestoreDialog()
     auto mainScreen = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([] (auto x) {
         return x->get_name()->Equals("MainScreen");
     });
-    PlaylistEditor::Utils::ShowRestoreDialog(mainScreen, [&] () {
+    PlaylistEditor::Utils::ShowRestoreDialog(mainScreen, [] () {
         INFO("Restore playlists");
         PlaylistEditor::FileUtils::RestorePlaylistFile();
 
