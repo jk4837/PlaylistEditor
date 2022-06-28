@@ -87,7 +87,9 @@ void Toast::CreateCanvas() {
         transform->set_eulerAngles(UnityEngine::Vector3(24.0f, 0.0f, 0.0f));
         VerticalLayoutGroup *layout = BeatSaberUI::CreateVerticalLayoutGroup(transform);
         GameObject *layoutGameObject = layout->get_gameObject();
-        layoutGameObject->GetComponent<ContentSizeFitter*>()->set_verticalFit(ContentSizeFitter::FitMode::PreferredSize);
+        auto contentSizeFitter = layoutGameObject->GetComponent<ContentSizeFitter*>();
+        if (contentSizeFitter)
+            contentSizeFitter->set_verticalFit(ContentSizeFitter::FitMode::PreferredSize);
         static ConstString bgName("round-rect-panel");
         layoutGameObject->AddComponent<Backgroundable*>()->ApplyBackgroundWithAlpha(bgName, 0.50f);
         layout->set_padding(UnityEngine::RectOffset::New_ctor(2, 2, 1, 1));
