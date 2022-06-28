@@ -942,6 +942,15 @@ custom_types::Helpers::Coroutine PlaylistEditor::doAdjustUI(const bool forceDisa
         this->packDurationText->set_text(il2cpp_utils::newcsstr("Duration\n" + this->GetSelectedPackDuration()));
         this->packDurationText->get_gameObject()->set_active(true);
     }
+
+    if (this->StandardLevelDetailView) {
+        const bool hasReplayButton = QuestUI::ArrayUtil::First(this->StandardLevelDetailView->get_gameObject()->GetComponentsInChildren<TMPro::TextMeshProUGUI*>(), [] (auto x) {
+            return to_utf8(csstrtostr(x->get_text())) == "Replay";
+        });
+        this->StandardLevelDetailView->get_practiceButton()->get_transform()->get_parent()
+            ->set_localScale({hasReplayButton ? 0.65f : 1, hasReplayButton ? 0.65f : 1, 1});
+    }
+
     co_return;
 }
 
