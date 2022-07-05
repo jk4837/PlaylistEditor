@@ -791,7 +791,7 @@ void PlaylistEditor::CreateSongActionButton() {
                 auto screenContainer = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Transform*>().First([](auto x) {
                     return x->get_name()->Equals("ScreenContainer");
                 });
-                this->listModal = new ListModal(screenContainer->get_transform(), UnityEngine::Vector2(30.0f, 25.0f), UnityEngine::Vector2(posX + 57.0f, -25.0f),
+                this->listModal = new ListModal(screenContainer->get_transform(), UnityEngine::Vector2(30.0f, 25.0f + 20.0f), UnityEngine::Vector2(posX + 57.0f, -25.0f + 6.0f),
                                                 [this] (const int i, const std::string &selectedPackName) {
                     const auto selectedPackIdx = i + 1;
                     const std::string selectedPackId = CustomLevelPackPrefixID + selectedPackName;
