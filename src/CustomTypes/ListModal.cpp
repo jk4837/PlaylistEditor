@@ -23,6 +23,7 @@ void ListModal::SetListItem(const std::vector<std::string> &list, const int init
         const auto name = list[i];
         this->listModalItem_.push_back(
             QuestUI::BeatSaberUI::CreateClickableText(this->listContainer_->get_transform(), name, false,
+                                                      UnityEngine::Vector2(0.0f, 0.0f), UnityEngine::Vector2(60.0f, 6.0f),
                                                       [this, i, name] () { return this->onItemClick_(i, name); }));
         if (material_)
             this->listModalItem_[i]->set_fontSharedMaterial(material_);
