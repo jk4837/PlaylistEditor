@@ -42,8 +42,8 @@ public:
     void AdjustUI(const bool forceDisable = false);   // use forceDisable, cause don't know how to decide if now at main menu
 
     bool isLevelDetailReady = false;
-    System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::IDifficultyBeatmap*>* difficultyBeatmaps = nullptr;
-    System::Collections::Generic::IReadOnlyList_1<::GlobalNamespace::IDifficultyBeatmapSet*>* difficultyBeatmapSets = nullptr;
+    ArrayW<GlobalNamespace::IDifficultyBeatmap*>* difficultyBeatmaps = nullptr;
+    ArrayW<::GlobalNamespace::IDifficultyBeatmapSet*>* difficultyBeatmapSets = nullptr;
 private:
     typedef enum REFESH_TYPE {
         SONG_STAY, SONG_REMOVE_STAY, SONG_MOVE_UP, SONG_MOVE_DOWN, PACK_INSERT, PACK_DELETE

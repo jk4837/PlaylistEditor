@@ -99,22 +99,22 @@ MAKE_HOOK_MATCH(MainFlowCoordinator_DidActivate, &GlobalNamespace::MainFlowCoord
 // for getting difficultyBeatmaps
 MAKE_HOOK_MATCH(BeatmapDifficultySegmentedControlController_SetData, &GlobalNamespace::BeatmapDifficultySegmentedControlController::SetData,
                 void, GlobalNamespace::BeatmapDifficultySegmentedControlController *self,
-                System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::IDifficultyBeatmap*>* difficultyBeatmaps,
+                ArrayW<GlobalNamespace::IDifficultyBeatmap*> difficultyBeatmaps,
                 GlobalNamespace::BeatmapDifficulty selectedDifficulty)
 {
     if (playlistEditor->IsSelectedCustomPack())
-        playlistEditor->difficultyBeatmaps = difficultyBeatmaps;
+        playlistEditor->difficultyBeatmaps = &difficultyBeatmaps;
     BeatmapDifficultySegmentedControlController_SetData(self, difficultyBeatmaps, selectedDifficulty);
 }
 
 // for getting difficultyBeatmapSets
 MAKE_HOOK_MATCH(BeatmapCharacteristicSegmentedControlController_SetData, &GlobalNamespace::BeatmapCharacteristicSegmentedControlController::SetData,
                 void, GlobalNamespace::BeatmapCharacteristicSegmentedControlController *self,
-                System::Collections::Generic::IReadOnlyList_1<::GlobalNamespace::IDifficultyBeatmapSet*>* difficultyBeatmapSets,
+                ArrayW<::GlobalNamespace::IDifficultyBeatmapSet*> difficultyBeatmapSets,
                 GlobalNamespace::BeatmapCharacteristicSO* selectedBeatmapCharacteristic)
 {
     if (playlistEditor->IsSelectedCustomPack())
-        playlistEditor->difficultyBeatmapSets = difficultyBeatmapSets;
+        playlistEditor->difficultyBeatmapSets = &difficultyBeatmapSets;
     BeatmapCharacteristicSegmentedControlController_SetData(self, difficultyBeatmapSets, selectedBeatmapCharacteristic);
 }
 

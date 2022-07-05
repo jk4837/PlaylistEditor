@@ -255,7 +255,7 @@ std::string PlaylistEditor::GetSelectedPackDuration()
     if (!this->LevelCollectionTableView || !this->LevelCollectionTableView->dyn__previewBeatmapLevels())
         return "0";
 
-    auto beatmapLevels = listToArrayW(this->LevelCollectionTableView->dyn__previewBeatmapLevels());
+    auto &beatmapLevels = this->LevelCollectionTableView->dyn__previewBeatmapLevels();
     for (size_t i = 0; i < beatmapLevels.Length(); i++)
     {
         sum += beatmapLevels[i]->get_songDuration();
@@ -356,8 +356,8 @@ void PlaylistEditor::SetSelectedCoverImage(const int collectionIdx, UnityEngine:
 
     if (!image)
         image = annotatedBeatmapLevelCollections[0]->get_coverImage(); // default cover
-    reinterpret_cast<::GlobalNamespace::CustomBeatmapLevelPack*>(annotatedBeatmapLevelCollections[collectionIdx])->dyn_$smallCoverImage$k__BackingField() = image;
-    reinterpret_cast<::GlobalNamespace::CustomBeatmapLevelPack*>(annotatedBeatmapLevelCollections[collectionIdx])->dyn_$coverImage$k__BackingField() = image;
+    reinterpret_cast<::GlobalNamespace::CustomBeatmapLevelPack*>(annotatedBeatmapLevelCollections[collectionIdx])->dyn__smallCoverImage() = image;
+    reinterpret_cast<::GlobalNamespace::CustomBeatmapLevelPack*>(annotatedBeatmapLevelCollections[collectionIdx])->dyn__coverImage() = image;
     this->AnnotatedBeatmapLevelCollectionsViewController->dyn__annotatedBeatmapLevelCollectionsGridView()->dyn__gridView()->ReloadData();
     this->AdjustUI();
 
@@ -509,7 +509,7 @@ void PlaylistEditor::ResetUI()
 }
 
 void PlaylistEditor::MoveUpSelectedSong() {
-    auto levelsInPack = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection()->get_beatmapLevels());
+    const auto &levelsInPack = this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection()->get_beatmapLevels();
     ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevelsInPack(levelsInPack.Length());
     auto levelIdx = this->GetSelectedCustomLevelIdx();
 
@@ -517,7 +517,7 @@ void PlaylistEditor::MoveUpSelectedSong() {
     std::swap(newLevelsInPack[levelIdx], newLevelsInPack[levelIdx-1]);
     ((GlobalNamespace::CustomBeatmapLevelCollection*) this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection())->dyn__customPreviewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::CustomPreviewBeatmapLevel*>*) newLevelsInPack.convert();
 
-    auto levelsInTable = listToArrayW(this->LevelCollectionTableView->dyn__previewBeatmapLevels());
+    auto &levelsInTable = this->LevelCollectionTableView->dyn__previewBeatmapLevels();
     ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevelsInTable(levelsInTable.Length());
 
     std::copy(levelsInTable.begin(), levelsInTable.end(), newLevelsInTable.begin());
@@ -526,7 +526,7 @@ void PlaylistEditor::MoveUpSelectedSong() {
 }
 
 void PlaylistEditor::MoveDownSelectedSong() {
-    auto levelsInPack = listToArrayW(this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection()->get_beatmapLevels());
+    const auto &levelsInPack = this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection()->get_beatmapLevels();
     ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevelsInPack(levelsInPack.Length());
     auto levelIdx = this->GetSelectedCustomLevelIdx();
 
@@ -534,7 +534,7 @@ void PlaylistEditor::MoveDownSelectedSong() {
     std::swap(newLevelsInPack[levelIdx], newLevelsInPack[levelIdx+1]);
     ((GlobalNamespace::CustomBeatmapLevelCollection*) this->AnnotatedBeatmapLevelCollectionsViewController->get_selectedAnnotatedBeatmapLevelCollection()->get_beatmapLevelCollection())->dyn__customPreviewBeatmapLevels() = (System::Collections::Generic::IReadOnlyList_1<GlobalNamespace::CustomPreviewBeatmapLevel*>*) newLevelsInPack.convert();
 
-    auto levelsInTable = listToArrayW(this->LevelCollectionTableView->dyn__previewBeatmapLevels());
+    const auto &levelsInTable = this->LevelCollectionTableView->dyn__previewBeatmapLevels();
     ArrayW<GlobalNamespace::IPreviewBeatmapLevel*> newLevelsInTable(levelsInTable.Length());
 
     std::copy(levelsInTable.begin(), levelsInTable.end(), newLevelsInTable.begin());
@@ -617,16 +617,16 @@ void PlaylistEditor::RemoveSongsInFilterList(const StringW &levelID) {
     // use readonly list first to get correct length, but second time will crash, need to use array type
     auto levelsRO = (reinterpret_cast<::GlobalNamespace::IAnnotatedBeatmapLevelCollection*>(packs[0]))
             ->get_beatmapLevelCollection()->get_beatmapLevels();
-    auto levels = listToArrayW((reinterpret_cast<::GlobalNamespace::IAnnotatedBeatmapLevelCollection*>(packs[0]))
+    auto levels = (reinterpret_cast<::GlobalNamespace::IAnnotatedBeatmapLevelCollection*>(packs[0])
             ->get_beatmapLevelCollection()->get_beatmapLevels());
 
     bool useArray = levels.Length() < 50000;
-    auto levelsLen = useArray ? levels.Length() : getCount(levelsRO);
+    auto levelsLen = useArray ? levels.Length() : levelsRO.Length();
 
     int levelIdx = -1;
     for (size_t i = 0; i < levelsLen; i++)
         if ((useArray && levelID == levels[i]->get_levelID()) ||
-            (!useArray && levelID == levelsRO->get_Item(i)->get_levelID())) {
+            (!useArray && levelID == levelsRO[i]->get_levelID())) {
             levelIdx = i;
             break;
         }
@@ -642,7 +642,7 @@ void PlaylistEditor::RemoveSongsInFilterList(const StringW &levelID) {
         for (size_t i = 0, j = 0; i < levelsLen; i++) {
             if (levelIdx == i)
                 continue;
-            newLevels[j++] = levelsRO->get_Item(i);
+            newLevels[j++] = levelsRO[i];
         }
     }
 

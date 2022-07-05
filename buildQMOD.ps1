@@ -26,7 +26,7 @@ echo "Creating qmod from mod.json"
 
 $mod = "./mod.json"
 $modJson = Get-Content $mod -Raw | ConvertFrom-Json
-$qmodName = $modJson.id + "_" + $modJson.version
+$qmodName = $modJson.id + "_" + $modJson.version + "_BS1191"
 
 $filelist = @($mod)
 
